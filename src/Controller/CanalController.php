@@ -5,7 +5,6 @@ namespace App\Controller;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -19,6 +18,7 @@ use App\Entity\CanalUser;
 use App\Entity\TypeObject;
 use App\Entity\TypeParticipant;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
+use App\Response\CustomJsonResponse;
 
 class CanalController extends AbstractController
 {
@@ -42,17 +42,17 @@ class CanalController extends AbstractController
     /**
      * @Route("/canal/create", name="createCanal", methods={"POST"})
      */
-    public function createCanal(Request $request): JsonResponse
+    public function createCanal(Request $request): CustomJsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['libelle']) || !isset($data['description']) || !isset($data['userId'])) {
-            return new JsonResponse(['message' => 'Données manquantes'], 400);
+            return new CustomJsonResponse(null, 400, 'Données manquantes');
         }
 
         $user = $this->em->getRepository(User::class)->find($data['userId']);
         if (!$user) {
-            return new JsonResponse(['message' => 'Utilisateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Utilisateur non trouvé');
         }
 
         $canal = new Canal();
@@ -65,7 +65,7 @@ class CanalController extends AbstractController
 
         $typeUser = $this->em->getRepository(TypeParticipant::class)->find(1);
         if (!$typeUser) {
-            return new JsonResponse(['message' => 'Type utilisateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Type utilisateur non trouvé');
         }
         $canalUser->setTypeParticipant($typeUser);
 
@@ -73,28 +73,28 @@ class CanalController extends AbstractController
         $this->em->persist($canalUser);
         $this->em->flush();
 
-        return new JsonResponse(['message' => 'Canal créé avec succès', 'canalId' => $canal->getId()], 201);
+        return new CustomJsonResponse(['canalId' => $canal->getId()], 201, 'Canal créé avec succès');
     }
 
     /**
      * @Route("/canal/{canalId}/set-admin", name="setCanalAdmin", methods={"POST"})
      */
-    public function setCanalAdmin(Request $request, $canalId): JsonResponse
+    public function setCanalAdmin(Request $request, $canalId): CustomJsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['userId'])) {
-            return new JsonResponse(['message' => 'Données manquantes'], 400);
+            return new CustomJsonResponse(null, 400, 'Données manquantes');
         }
 
         $canal = $this->em->getRepository(Canal::class)->find($canalId);
         if (!$canal) {
-            return new JsonResponse(['message' => 'Canal non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Canal non trouvé');
         }
 
         $user = $this->em->getRepository(User::class)->find($data['userId']);
         if (!$user) {
-            return new JsonResponse(['message' => 'Utilisateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Utilisateur non trouvé');
         }
 
         $canalUser = $this->em->getRepository(CanalUser::class)->findOneBy([
@@ -103,39 +103,39 @@ class CanalController extends AbstractController
         ]);
 
         if (!$canalUser) {
-            return new JsonResponse(['message' => 'L\'utilisateur n\'est pas membre de ce canal'], 400);
+            return new CustomJsonResponse(null, 400, 'L\'utilisateur n\'est pas membre de ce canal');
         }
 
         $typeUser = $this->em->getRepository(TypeParticipant::class)->find(2);
         if (!$typeUser) {
-            return new JsonResponse(['message' => 'Type utilisateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Type utilisateur non trouvé');
         }
         $canalUser->setTypeParticipant($typeUser);
 
         $this->em->flush();
 
-        return new JsonResponse(['message' => 'Administrateur défini avec succès'], 200);
+        return new CustomJsonResponse(null, 200, 'Administrateur défini avec succès');
     }
 
     /**
      * @Route("/canal/{canalId}/join", name="joinCanal", methods={"POST"})
      */
-    public function joinCanal(Request $request, $canalId): JsonResponse
+    public function joinCanal(Request $request, $canalId): CustomJsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['userId'])) {
-            return new JsonResponse(['message' => 'Données manquantes'], 400);
+            return new CustomJsonResponse(null, 400, 'Données manquantes');
         }
 
         $canal = $this->em->getRepository(Canal::class)->find($canalId);
         if (!$canal) {
-            return new JsonResponse(['message' => 'Canal non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Canal non trouvé');
         }
 
         $user = $this->em->getRepository(User::class)->find($data['userId']);
         if (!$user) {
-            return new JsonResponse(['message' => 'Utilisateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Utilisateur non trouvé');
         }
 
         $existingCanalUser = $this->em->getRepository(CanalUser::class)->findOneBy([
@@ -144,7 +144,7 @@ class CanalController extends AbstractController
         ]);
 
         if ($existingCanalUser) {
-            return new JsonResponse(['message' => 'L\'utilisateur est déjà membre de ce canal'], 400);
+            return new CustomJsonResponse(null, 400, 'L\'utilisateur est déjà membre de ce canal');
         }
 
         $canalUser = new CanalUser();
@@ -153,35 +153,35 @@ class CanalController extends AbstractController
 
         $typeUser = $this->em->getRepository(TypeParticipant::class)->find(3);
         if (!$typeUser) {
-            return new JsonResponse(['message' => 'Type utilisateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Type utilisateur non trouvé');
         }
         $canalUser->setTypeParticipant($typeUser);
 
         $this->em->persist($canalUser);
         $this->em->flush();
 
-        return new JsonResponse(['message' => 'Utilisateur ajouté au canal avec succès'], 201);
+        return new CustomJsonResponse(null, 201, 'Utilisateur ajouté au canal avec succès');
     }
 
     /**
      * @Route("/canal/{canalId}/leave", name="leaveCanal", methods={"POST"})
      */
-    public function leaveCanal(Request $request, $canalId): JsonResponse
+    public function leaveCanal(Request $request, $canalId): CustomJsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['userId'])) {
-            return new JsonResponse(['message' => 'Données manquantes'], 400);
+            return new CustomJsonResponse(null, 400, 'Données manquantes');
         }
 
         $canal = $this->em->getRepository(Canal::class)->find($canalId);
         if (!$canal) {
-            return new JsonResponse(['message' => 'Canal non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Canal non trouvé');
         }
 
         $user = $this->em->getRepository(User::class)->find($data['userId']);
         if (!$user) {
-            return new JsonResponse(['message' => 'Utilisateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Utilisateur non trouvé');
         }
 
         $canalUser = $this->em->getRepository(CanalUser::class)->findOneBy([
@@ -189,35 +189,35 @@ class CanalController extends AbstractController
             'muntu' => $user
         ]);
         if (!$canalUser) {
-            return new JsonResponse(['message' => 'L\'utilisateur n\'est pas membre de ce canal'], 400);
+            return new CustomJsonResponse(null, 400, 'L\'utilisateur n\'est pas membre de ce canal');
         }
         $canalUser->setDeletedAt();
 
         $this->em->remove($canalUser);
         $this->em->flush();
 
-        return new JsonResponse(['message' => 'Utilisateur retiré du canal avec succès'], 200);
+        return new CustomJsonResponse(null, 200, 'Utilisateur retiré du canal avec succès');
     }
 
     /**
      * @Route("/canal/{canalId}/kick", name="kickUserFromCanal", methods={"POST"})
      */
-    public function kickUserFromCanal(Request $request, $canalId): JsonResponse
+    public function kickUserFromCanal(Request $request, $canalId): CustomJsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['adminId']) || !isset($data['userIdToKick'])) {
-            return new JsonResponse(['message' => 'Données manquantes'], 400);
+            return new CustomJsonResponse(null, 400, 'Données manquantes');
         }
 
         $canal = $this->em->getRepository(Canal::class)->find($canalId);
         if (!$canal) {
-            return new JsonResponse(['message' => 'Canal non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Canal non trouvé');
         }
 
         $admin = $this->em->getRepository(User::class)->find($data['adminId']);
         if (!$admin) {
-            return new JsonResponse(['message' => 'Administrateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Administrateur non trouvé');
         }
 
         $adminCanalUser = $this->em->getRepository(CanalUser::class)->findOneBy([
@@ -227,12 +227,12 @@ class CanalController extends AbstractController
         ]);
 
         if (!$adminCanalUser) {
-            return new JsonResponse(['message' => 'Vous n\'avez pas les droits d\'administrateur pour ce canal'], 403);
+            return new CustomJsonResponse(null, 403, 'Vous n\'avez pas les droits d\'administrateur pour ce canal');
         }
 
         $userToKick = $this->em->getRepository(User::class)->find($data['userIdToKick']);
         if (!$userToKick) {
-            return new JsonResponse(['message' => 'Utilisateur à expulser non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Utilisateur à expulser non trouvé');
         }
 
         $canalUserToKick = $this->em->getRepository(CanalUser::class)->findOneBy([
@@ -241,34 +241,34 @@ class CanalController extends AbstractController
         ]);
 
         if (!$canalUserToKick) {
-            return new JsonResponse(['message' => 'L\'utilisateur n\'est pas membre de ce canal'], 400);
+            return new CustomJsonResponse(null, 400, 'L\'utilisateur n\'est pas membre de ce canal');
         }
 
         $this->em->remove($canalUserToKick);
         $this->em->flush();
 
-        return new JsonResponse(['message' => 'Utilisateur expulsé du canal avec succès'], 200);
+        return new CustomJsonResponse(null, 200, 'Utilisateur expulsé du canal avec succès');
     }
 
     /**
      * @Route("/canal/{canalId}/update", name="updateCanal", methods={"PUT"})
      */
-    public function updateCanal(Request $request, $canalId): JsonResponse
+    public function updateCanal(Request $request, $canalId): CustomJsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['adminId'])) {
-            return new JsonResponse(['message' => 'Données manquantes'], 400);
+            return new CustomJsonResponse(null, 400, 'Données manquantes');
         }
 
         $canal = $this->em->getRepository(Canal::class)->find($canalId);
         if (!$canal) {
-            return new JsonResponse(['message' => 'Canal non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Canal non trouvé');
         }
 
         $admin = $this->em->getRepository(User::class)->find($data['adminId']);
         if (!$admin) {
-            return new JsonResponse(['message' => 'Administrateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Administrateur non trouvé');
         }
 
         $adminCanalUser = $this->em->getRepository(CanalUser::class)->findOneBy([
@@ -278,7 +278,7 @@ class CanalController extends AbstractController
         ]);
 
         if (!$adminCanalUser) {
-            return new JsonResponse(['message' => 'Vous n\'avez pas les droits d\'administrateur pour ce canal'], 403);
+            return new CustomJsonResponse(null, 403, 'Vous n\'avez pas les droits d\'administrateur pour ce canal');
         }
 
         if (isset($data['libelle'])) {
@@ -291,17 +291,17 @@ class CanalController extends AbstractController
 
         $this->em->flush();
 
-        return new JsonResponse(['message' => 'Informations du canal mises à jour avec succès'], 200);
+        return new CustomJsonResponse(null, 200, 'Informations du canal mises à jour avec succès');
     }
 
     /**
      * @Route("/canal/{canalId}/membres", name="listeMembresCanal", methods={"GET"})
      */
-    public function listeMembresCanal($canalId): JsonResponse
+    public function listeMembresCanal($canalId): CustomJsonResponse
     {
         $canal = $this->em->getRepository(Canal::class)->find($canalId);
         if (!$canal) {
-            return new JsonResponse(['message' => 'Canal non trouvé'], 404);
+            return new CustomJsonResponse(null, 404, 'Canal non trouvé');
         }
 
         $membres = $this->em->getRepository(CanalUser::class)->findBy(['canal' => $canal]);
@@ -311,11 +311,10 @@ class CanalController extends AbstractController
             $membresData[] = [
                 'id' => $membre->getMuntu()->getId(),
                 'username' => $membre->getMuntu()->getUsername(),
-
                 'typeUser' => $membre->getTypeParticipant()->getLibelle()
             ];
         }
 
-        return new JsonResponse(['membres' => $membresData], 200);
+        return new CustomJsonResponse(['membres' => $membresData], 200, 'Liste des membres récupérée avec succès');
     }
 }

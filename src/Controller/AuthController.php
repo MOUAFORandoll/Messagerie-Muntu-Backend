@@ -229,6 +229,41 @@ class AuthController extends AbstractController
         );
     }
 
+
+    /**
+     * @Route("/user/search", name="searchUser", methods={"GET"})
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function searchUser(Request $request): JsonResponse
+    {
+        $username = $request->query->get('username');
+
+        if (!$username) {
+            return new CustomJsonResponse(
+                ['message' => 'Le paramètre username est requis'],
+                400,
+                'Paramètre manquant'
+            );
+        }
+
+        $user = $this->em->getRepository(User::class)->findOneBy(['username' => $username]);
+
+        if (!$user) {
+            return new CustomJsonResponse(
+                ['message' => 'Aucun utilisateur trouvé avec ce nom d\'utilisateur'],
+                404,
+                'Utilisateur non trouvé'
+            );
+        }
+
+        $userFormat = $this->myFunction->formatUser($user);
+        return new CustomJsonResponse(
+            ['user' => $userFormat],
+            200,
+            'Utilisateur trouvé avec succès'
+        );
+    }
     public function createNewJWT(User $user)
     {
         $token = $this->jwt->create($user);

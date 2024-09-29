@@ -5,7 +5,6 @@ namespace App\Controller;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -15,6 +14,7 @@ use App\Entity\User;
 use App\Entity\Groupe;
 use App\Entity\GroupeUser;
 use App\Entity\TypeParticipant;
+use App\Response\CustomJsonResponse;
 
 class GroupeController extends AbstractController
 {
@@ -38,17 +38,17 @@ class GroupeController extends AbstractController
     /**
      * @Route("/groupe/create", name="createGroupe", methods={"POST"})
      */
-    public function createGroupe(Request $request): JsonResponse
+    public function createGroupe(Request $request): CustomJsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['libelle']) || !isset($data['description']) || !isset($data['userId'])) {
-            return new JsonResponse(['message' => 'Données manquantes'], 400);
+            return new CustomJsonResponse(null, 203, 'Données manquantes');
         }
 
         $user = $this->em->getRepository(User::class)->find($data['userId']);
         if (!$user) {
-            return new JsonResponse(['message' => 'Utilisateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Utilisateur non trouvé');
         }
 
         $groupe = new Groupe();
@@ -61,7 +61,7 @@ class GroupeController extends AbstractController
 
         $typeUser = $this->em->getRepository(TypeParticipant::class)->find(1);
         if (!$typeUser) {
-            return new JsonResponse(['message' => 'Type utilisateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Type utilisateur non trouvé');
         }
         $groupeUser->setTypeParticipant($typeUser);
 
@@ -69,28 +69,28 @@ class GroupeController extends AbstractController
         $this->em->persist($groupeUser);
         $this->em->flush();
 
-        return new JsonResponse(['message' => 'Groupe créé avec succès', 'groupeId' => $groupe->getId()], 201);
+        return new CustomJsonResponse(['groupeId' => $groupe->getId()], 201, 'Groupe créé avec succès');
     }
 
     /**
      * @Route("/groupe/{groupeId}/set-admin", name="setGroupeAdmin", methods={"POST"})
      */
-    public function setGroupeAdmin(Request $request, $groupeId): JsonResponse
+    public function setGroupeAdmin(Request $request, $groupeId): CustomJsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['userId'])) {
-            return new JsonResponse(['message' => 'Données manquantes'], 400);
+            return new CustomJsonResponse(null, 203, 'Données manquantes');
         }
 
         $groupe = $this->em->getRepository(Groupe::class)->find($groupeId);
         if (!$groupe) {
-            return new JsonResponse(['message' => 'Groupe non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Groupe non trouvé');
         }
 
         $user = $this->em->getRepository(User::class)->find($data['userId']);
         if (!$user) {
-            return new JsonResponse(['message' => 'Utilisateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Utilisateur non trouvé');
         }
 
         $groupeUser = $this->em->getRepository(GroupeUser::class)->findOneBy([
@@ -99,39 +99,39 @@ class GroupeController extends AbstractController
         ]);
 
         if (!$groupeUser) {
-            return new JsonResponse(['message' => 'L\'utilisateur n\'est pas membre de ce groupe'], 400);
+            return new CustomJsonResponse(null, 203, 'L\'utilisateur n\'est pas membre de ce groupe');
         }
 
         $typeUser = $this->em->getRepository(TypeParticipant::class)->find(2);
         if (!$typeUser) {
-            return new JsonResponse(['message' => 'Type utilisateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Type utilisateur non trouvé');
         }
         $groupeUser->setTypeParticipant($typeUser);
 
         $this->em->flush();
 
-        return new JsonResponse(['message' => 'Administrateur défini avec succès'], 200);
+        return new CustomJsonResponse(null, 200, 'Administrateur défini avec succès');
     }
 
     /**
      * @Route("/groupe/{groupeId}/join", name="joinGroupe", methods={"POST"})
      */
-    public function joinGroupe(Request $request, $groupeId): JsonResponse
+    public function joinGroupe(Request $request, $groupeId): CustomJsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['userId'])) {
-            return new JsonResponse(['message' => 'Données manquantes'], 400);
+            return new CustomJsonResponse(null, 203, 'Données manquantes');
         }
 
         $groupe = $this->em->getRepository(Groupe::class)->find($groupeId);
         if (!$groupe) {
-            return new JsonResponse(['message' => 'Groupe non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Groupe non trouvé');
         }
 
         $user = $this->em->getRepository(User::class)->find($data['userId']);
         if (!$user) {
-            return new JsonResponse(['message' => 'Utilisateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Utilisateur non trouvé');
         }
 
         $existingGroupeUser = $this->em->getRepository(GroupeUser::class)->findOneBy([
@@ -140,7 +140,7 @@ class GroupeController extends AbstractController
         ]);
 
         if ($existingGroupeUser) {
-            return new JsonResponse(['message' => 'L\'utilisateur est déjà membre de ce groupe'], 400);
+            return new CustomJsonResponse(null, 203, 'L\'utilisateur est déjà membre de ce groupe');
         }
 
         $groupeUser = new GroupeUser();
@@ -149,35 +149,35 @@ class GroupeController extends AbstractController
 
         $typeUser = $this->em->getRepository(TypeParticipant::class)->find(3);
         if (!$typeUser) {
-            return new JsonResponse(['message' => 'Type utilisateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Type utilisateur non trouvé');
         }
         $groupeUser->setTypeParticipant($typeUser);
 
         $this->em->persist($groupeUser);
         $this->em->flush();
 
-        return new JsonResponse(['message' => 'Utilisateur ajouté au groupe avec succès'], 201);
+        return new CustomJsonResponse(null, 201, 'Utilisateur ajouté au groupe avec succès');
     }
 
     /**
      * @Route("/groupe/{groupeId}/leave", name="leaveGroupe", methods={"POST"})
      */
-    public function leaveGroupe(Request $request, $groupeId): JsonResponse
+    public function leaveGroupe(Request $request, $groupeId): CustomJsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['userId'])) {
-            return new JsonResponse(['message' => 'Données manquantes'], 400);
+            return new CustomJsonResponse(null, 203, 'Données manquantes');
         }
 
         $groupe = $this->em->getRepository(Groupe::class)->find($groupeId);
         if (!$groupe) {
-            return new JsonResponse(['message' => 'Groupe non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Groupe non trouvé');
         }
 
         $user = $this->em->getRepository(User::class)->find($data['userId']);
         if (!$user) {
-            return new JsonResponse(['message' => 'Utilisateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Utilisateur non trouvé');
         }
 
         $groupeUser = $this->em->getRepository(GroupeUser::class)->findOneBy([
@@ -186,34 +186,34 @@ class GroupeController extends AbstractController
         ]);
 
         if (!$groupeUser) {
-            return new JsonResponse(['message' => 'L\'utilisateur n\'est pas membre de ce groupe'], 400);
+            return new CustomJsonResponse(null, 203, 'L\'utilisateur n\'est pas membre de ce groupe');
         }
 
         $this->em->remove($groupeUser);
         $this->em->flush();
 
-        return new JsonResponse(['message' => 'Utilisateur retiré du groupe avec succès'], 200);
+        return new CustomJsonResponse(null, 200, 'Utilisateur retiré du groupe avec succès');
     }
 
     /**
      * @Route("/groupe/{groupeId}/kick", name="kickFromGroupe", methods={"POST"})
      */
-    public function kickFromGroupe(Request $request, $groupeId): JsonResponse
+    public function kickFromGroupe(Request $request, $groupeId): CustomJsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['adminId']) || !isset($data['userId'])) {
-            return new JsonResponse(['message' => 'Données manquantes'], 400);
+            return new CustomJsonResponse(null, 203, 'Données manquantes');
         }
 
         $groupe = $this->em->getRepository(Groupe::class)->find($groupeId);
         if (!$groupe) {
-            return new JsonResponse(['message' => 'Groupe non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Groupe non trouvé');
         }
 
         $admin = $this->em->getRepository(User::class)->find($data['adminId']);
         if (!$admin) {
-            return new JsonResponse(['message' => 'Administrateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Administrateur non trouvé');
         }
 
         $adminGroupeUser = $this->em->getRepository(GroupeUser::class)->findOneBy([
@@ -223,12 +223,12 @@ class GroupeController extends AbstractController
         ]);
 
         if (!$adminGroupeUser) {
-            return new JsonResponse(['message' => 'Vous n\'avez pas les droits d\'administrateur pour ce groupe'], 403);
+            return new CustomJsonResponse(null, 403, 'Vous n\'avez pas les droits d\'administrateur pour ce groupe');
         }
 
         $user = $this->em->getRepository(User::class)->find($data['userId']);
         if (!$user) {
-            return new JsonResponse(['message' => 'Utilisateur à expulser non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Utilisateur à expulser non trouvé');
         }
 
         $groupeUser = $this->em->getRepository(GroupeUser::class)->findOneBy([
@@ -237,34 +237,34 @@ class GroupeController extends AbstractController
         ]);
 
         if (!$groupeUser) {
-            return new JsonResponse(['message' => 'L\'utilisateur n\'est pas membre de ce groupe'], 400);
+            return new CustomJsonResponse(null, 203, 'L\'utilisateur n\'est pas membre de ce groupe');
         }
 
         $this->em->remove($groupeUser);
         $this->em->flush();
 
-        return new JsonResponse(['message' => 'Utilisateur expulsé du groupe avec succès'], 200);
+        return new CustomJsonResponse(null, 200, 'Utilisateur expulsé du groupe avec succès');
     }
 
     /**
      * @Route("/groupe/{groupeId}/update", name="updateGroupe", methods={"PUT"})
      */
-    public function updateGroupe(Request $request, $groupeId): JsonResponse
+    public function updateGroupe(Request $request, $groupeId): CustomJsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['adminId'])) {
-            return new JsonResponse(['message' => 'Données manquantes'], 400);
+            return new CustomJsonResponse(null, 203, 'Données manquantes');
         }
 
         $groupe = $this->em->getRepository(Groupe::class)->find($groupeId);
         if (!$groupe) {
-            return new JsonResponse(['message' => 'Groupe non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Groupe non trouvé');
         }
 
         $admin = $this->em->getRepository(User::class)->find($data['adminId']);
         if (!$admin) {
-            return new JsonResponse(['message' => 'Administrateur non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Administrateur non trouvé');
         }
 
         $adminGroupeUser = $this->em->getRepository(GroupeUser::class)->findOneBy([
@@ -274,7 +274,7 @@ class GroupeController extends AbstractController
         ]);
 
         if (!$adminGroupeUser) {
-            return new JsonResponse(['message' => 'Vous n\'avez pas les droits d\'administrateur pour ce groupe'], 403);
+            return new CustomJsonResponse(null, 403, 'Vous n\'avez pas les droits d\'administrateur pour ce groupe');
         }
 
         if (isset($data['libelle'])) {
@@ -287,17 +287,17 @@ class GroupeController extends AbstractController
 
         $this->em->flush();
 
-        return new JsonResponse(['message' => 'Informations du groupe mises à jour avec succès'], 200);
+        return new CustomJsonResponse(null, 200, 'Informations du groupe mises à jour avec succès');
     }
 
     /**
      * @Route("/groupe/{groupeId}/membres", name="listeMembresGroupe", methods={"GET"})
      */
-    public function listeMembresGroupe($groupeId): JsonResponse
+    public function listeMembresGroupe($groupeId): CustomJsonResponse
     {
         $groupe = $this->em->getRepository(Groupe::class)->find($groupeId);
         if (!$groupe) {
-            return new JsonResponse(['message' => 'Groupe non trouvé'], 404);
+            return new CustomJsonResponse(null, 203, 'Groupe non trouvé');
         }
 
         $membres = $this->em->getRepository(GroupeUser::class)->findBy(['groupe' => $groupe]);
@@ -307,11 +307,10 @@ class GroupeController extends AbstractController
             $membresData[] = [
                 'id' => $membre->getMuntu()->getId(),
                 'username' => $membre->getMuntu()->getUsername(),
-
                 'typeUser' => $membre->getTypeParticipant()->getLibelle()
             ];
         }
 
-        return new JsonResponse(['membres' => $membresData], 200);
+        return new CustomJsonResponse(['membres' => $membresData], 200, 'Liste des membres du groupe');
     }
 }

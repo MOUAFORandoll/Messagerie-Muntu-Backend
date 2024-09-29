@@ -6,7 +6,7 @@ use App\Entity\TypeParticipant;
 use App\Entity\User;
 use App\FunctionU\TransactionFunction;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
+use App\Response\CustomJsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
@@ -35,12 +35,11 @@ class InitController extends AbstractController
         $typeParticipant = $this->initTypeParticipant();
         $typeUser = $this->initTypeUser();
 
-        return new JsonResponse([
+        return new CustomJsonResponse([
             'type_user' => $typeUser,
             'type_participant' => $typeParticipant,
-
             'directory' => $directory,
-        ], 200);
+        ], 200, 'Success');
     }
 
 
@@ -64,9 +63,9 @@ class InitController extends AbstractController
             }
         }
 
-        return new JsonResponse([
-            'message' => 'Success',
-        ], 200);
+        return new CustomJsonResponse([
+            'directories' => $subDirs,
+        ], 200, 'Success');
     }
 
 
@@ -81,9 +80,12 @@ class InitController extends AbstractController
         $this->em->persist($admin);
         $this->em->flush();
 
-        return new JsonResponse([
-            'message' => 'Success',
-        ], 200);
+        return new CustomJsonResponse([
+            'admin' => [
+                'id' => $admin->getId(),
+                'typeUser' => $typeUser->getLibelle(),
+            ],
+        ], 200, 'Success');
     }
 
     private function initTypeParticipant()
@@ -92,37 +94,43 @@ class InitController extends AbstractController
         $data = $this->em->getRepository(TypeParticipant::class)->findAll();
 
         if (count($data) >= count($types)) {
-            return new JsonResponse(['message' => 'Exist'], 200);
+            return new CustomJsonResponse(['existingTypes' => count($data)], 203, 'Types already exist');
         }
 
+        $createdTypes = [];
         foreach ($types as $typeName) {
             $type = new TypeParticipant();
             $type->setLibelle($typeName);
 
             $this->em->persist($type);
             $this->em->flush();
+            
+            $createdTypes[] = $typeName;
         }
 
-        return new JsonResponse(['message' => 'Success'], 200);
+        return new CustomJsonResponse(['createdTypes' => $createdTypes], 200, 'Success');
     }
 
     private function initTypeUser()
     {
-        $types = ['Admin', 'Membre',];
+        $types = ['Admin', 'Membre'];
         $data = $this->em->getRepository(TypeUser::class)->findAll();
 
         if (count($data) >= count($types)) {
-            return new JsonResponse(['message' => 'Exist'], 200);
+            return new CustomJsonResponse(['existingTypes' => count($data)], 203, 'Types already exist');
         }
 
+        $createdTypes = [];
         foreach ($types as $typeName) {
             $type = new TypeUser();
             $type->setLibelle($typeName);
 
             $this->em->persist($type);
             $this->em->flush();
+            
+            $createdTypes[] = $typeName;
         }
 
-        return new JsonResponse(['message' => 'Success'], 200);
+        return new CustomJsonResponse(['createdTypes' => $createdTypes], 200, 'Success');
     }
 }

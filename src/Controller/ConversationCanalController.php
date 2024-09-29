@@ -5,7 +5,6 @@ namespace App\Controller;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -18,6 +17,7 @@ use App\Entity\Canal;
 use App\Entity\CanalUser;
 use App\Entity\TypeObject;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
+use App\Response\CustomJsonResponse;
 
 class ConversationCanalController extends AbstractController
 {
@@ -41,33 +41,29 @@ class ConversationCanalController extends AbstractController
     /**
      * @Route("/canal/message/status/{id}", name="updateCanalMessageStatus", methods={"PATCH"})
      */
-    public function updateMessageStatus(Request $request, $id): JsonResponse
+    public function updateMessageStatus(Request $request, $id): CustomJsonResponse
     {
         $message = $this->em->getRepository(Message::class)->find($id);
 
         if (!$message) {
-            return new JsonResponse([
-                'message' => 'Message non trouvé'
-            ], 404);
+            return new CustomJsonResponse(null, 203, 'Message non trouvé');
         }
 
         $data = json_decode($request->getContent(), true);
         $newStatus = $data['status'] ?? null;
 
         if (!in_array($newStatus, [0, 1, 2])) {
-            return new JsonResponse([
-                'message' => 'Statut invalide. Les valeurs autorisées sont 0 (envoyé), 1 (reçu) ou 2 (lu).'
-            ], 400);
+            return new CustomJsonResponse(null, 203, 'Statut invalide. Les valeurs autorisées sont 0 (envoyé), 1 (reçu) ou 2 (lu).');
         }
 
         $message->setStatus($newStatus);
         $message->setUpdatedAt();
         $this->em->flush();
         $messageSend = $this->myFunction->formatMessageCanal($message);
-        return new JsonResponse([
+        return new CustomJsonResponse([
             'message' => $messageSend,
             'newStatus' => $newStatus
-        ], 200);
+        ], 200, 'Statut du message mis à jour avec succès');
     }
 
     /**
@@ -88,7 +84,7 @@ class ConversationCanalController extends AbstractController
         ];
 
         if (!$this->myFunction->checkRequiredFields($data, $requiredFields)) {
-            return new JsonResponse(['message' => 'Vérifiez votre requête'], 400);
+            return new CustomJsonResponse(null, 203, 'Vérifiez votre requête');
         }
 
         $emetteurId = $data['emetteurId'];
@@ -97,16 +93,12 @@ class ConversationCanalController extends AbstractController
 
         $sender = $this->em->getRepository(User::class)->find($emetteurId);
         if (!$sender) {
-            return new JsonResponse([
-                'message' => 'Émetteur non trouvé'
-            ], 404);
+            return new CustomJsonResponse(null, 203, 'Émetteur non trouvé');
         }
 
         $canal = $this->em->getRepository(Canal::class)->find($canalId);
         if (!$canal) {
-            return new JsonResponse([
-                'message' => 'Canal non trouvé'
-            ], 404);
+            return new CustomJsonResponse(null, 203, 'Canal non trouvé');
         }
 
         $canalUser = $this->em->getRepository(CanalUser::class)->findOneBy([
@@ -115,9 +107,7 @@ class ConversationCanalController extends AbstractController
         ]);
 
         if (!$canalUser || $canalUser->getTypeParticipant()->getId() != 1) {
-            return new JsonResponse([
-                'message' => 'Vous n\'êtes pas autorisé à envoyer des messages dans ce canal'
-            ], 403);
+            return new CustomJsonResponse(null, 203, 'Vous n\'êtes pas autorisé à envoyer des messages dans ce canal');
         }
 
         $message = new Message();
@@ -137,25 +127,24 @@ class ConversationCanalController extends AbstractController
 
         $messageSend = $this->myFunction->formatMessageCanal($message);
 
-        return new JsonResponse(
+        return new CustomJsonResponse(
             [
                 'message' => $messageSend
             ],
-            201
+            201,
+            'Message créé avec succès'
         );
     }
 
     /**
      * @Route("/canal/{canalId}/messages", name="getCanalMessages", methods={"GET"})
      */
-    public function getCanalMessages($canalId): JsonResponse
+    public function getCanalMessages($canalId): CustomJsonResponse
     {
         $canal = $this->em->getRepository(Canal::class)->find($canalId);
 
         if (!$canal) {
-            return new JsonResponse([
-                'message' => 'Canal non trouvé'
-            ], 404);
+            return new CustomJsonResponse(null, 203, 'Canal non trouvé');
         }
 
         $messages = $this->em->getRepository(Message::class)->findBy(
@@ -168,9 +157,9 @@ class ConversationCanalController extends AbstractController
             $messagesData[] = $this->myFunction->formatMessageCanal($message);
         }
 
-        return new JsonResponse([
+        return new CustomJsonResponse([
             'messages' => $messagesData
-        ], 200);
+        ], 200, 'Messages récupérés avec succès');
     }
 
     /**
@@ -181,9 +170,7 @@ class ConversationCanalController extends AbstractController
         $message = $this->em->getRepository(Message::class)->find($id);
 
         if (!$message) {
-            return new JsonResponse([
-                'message' => 'Message non trouvé'
-            ], 404);
+            return new CustomJsonResponse(null, 203, 'Message non trouvé');
         }
 
         $message->setDeletedAt();
@@ -191,9 +178,9 @@ class ConversationCanalController extends AbstractController
 
         $messageSend = $this->myFunction->formatMessageCanal($message);
 
-        return new JsonResponse([
+        return new CustomJsonResponse([
             'message' => $messageSend
-        ], 200);
+        ], 200, 'Message supprimé avec succès');
     }
 
     /**
@@ -204,17 +191,13 @@ class ConversationCanalController extends AbstractController
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['message'])) {
-            return new JsonResponse([
-                'message' => 'Veuillez renseigner le message'
-            ], 400);
+            return new CustomJsonResponse(null, 203, 'Veuillez renseigner le message');
         }
 
         $message = $this->em->getRepository(Message::class)->find($id);
 
         if (!$message) {
-            return new JsonResponse([
-                'message' => 'Message non trouvé'
-            ], 404);
+            return new CustomJsonResponse(null, 203, 'Message non trouvé');
         }
 
         $message->setValeur($data['message']);
@@ -223,23 +206,21 @@ class ConversationCanalController extends AbstractController
 
         $messageSend = $this->myFunction->formatMessageCanal($message);
 
-        return new JsonResponse([
+        return new CustomJsonResponse([
             'message' => $messageSend
-        ], 200);
+        ], 200, 'Message mis à jour avec succès');
     }
 
 
     /**
      * @Route("/canals/{userId}", name="getUserCanals", methods={"GET"})
      */
-    public function getUserCanals($userId): JsonResponse
+    public function getUserCanals($userId): CustomJsonResponse
     {
         $user = $this->em->getRepository(User::class)->find($userId);
 
         if (!$user) {
-            return new JsonResponse([
-                'message' => 'Utilisateur non trouvé'
-            ], 404);
+            return new CustomJsonResponse(null, 203, 'Utilisateur non trouvé');
         }
 
         $canalUsers = $this->em->getRepository(CanalUser::class)->findBy([
@@ -257,9 +238,9 @@ class ConversationCanalController extends AbstractController
             ];
         }
 
-        return new JsonResponse([
+        return new CustomJsonResponse([
             'canals' => $canalsData
-        ], 200);
+        ], 200, 'Canaux de l\'utilisateur récupérés avec succès');
     }
 
     private function getLastMessage(Canal $canal): ?array

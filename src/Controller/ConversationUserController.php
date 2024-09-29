@@ -17,6 +17,7 @@ use App\Entity\MessageObject;
 use App\Entity\ConversationUser;
 use App\Entity\TypeObject;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
+use App\Response\CustomJsonResponse;
 
 class ConversationUserController extends AbstractController
 {
@@ -49,32 +50,25 @@ class ConversationUserController extends AbstractController
     /**
      * @Route("/message/status/{id}", name="updateMessageStatus", methods={"PATCH"})
      */
-    public function updateMessageStatus(Request $request, $id): JsonResponse
+    public function updateMessageStatus(Request $request, $id): CustomJsonResponse
     {
         $message = $this->em->getRepository(MessageUser::class)->find($id);
 
         if (!$message) {
-            return new JsonResponse([
-                'message' => 'Message non trouvé'
-            ], 404);
+            return new CustomJsonResponse(null, 404, 'Message non trouvé');
         }
 
         $data = json_decode($request->getContent(), true);
         $newStatus = $data['status'] ?? null;
 
         if (!in_array($newStatus, [0, 1, 2])) {
-            return new JsonResponse([
-                'message' => 'Statut invalide. Les valeurs autorisées sont 0 (envoyé), 1 (reçu) ou 2 (lu).'
-            ], 400);
+            return new CustomJsonResponse(null, 203, 'Statut invalide. Les valeurs autorisées sont 0 (envoyé), 1 (reçu) ou 2 (lu).');
         }
 
         $message->setStatus($newStatus);
         $this->em->flush();
         $messageSend = $this->myFunction->formatMessageUser($message);
-        return new JsonResponse([
-            'message' => $messageSend,
-            'newStatus' => $newStatus
-        ], 200);
+        return new CustomJsonResponse($messageSend, 200, 'Statut mis à jour avec succès');
     }
 
 
@@ -98,7 +92,7 @@ class ConversationUserController extends AbstractController
         ];
 
         if (!$this->myFunction->checkRequiredFields($data, $requiredFields)) {
-            return new JsonResponse(['message' => 'Vérifiez votre requête'], 203);
+            return new CustomJsonResponse(null, 203, 'Vérifiez votre requête');
         }
 
         $emetteurId = $data['emetteurId'];
@@ -107,16 +101,12 @@ class ConversationUserController extends AbstractController
 
         $sender = $this->em->getRepository(User::class)->findOneBy(['id' => $emetteurId]);
         if (!$sender) {
-            return new JsonResponse([
-                'message' => 'Vous n\'êtes pas autorisé, vous ne pouvez pas poursuivre l\'opération'
-            ], 203);
+            return new CustomJsonResponse(null, 203, 'Vous n\'êtes pas autorisé, vous ne pouvez pas poursuivre l\'opération');
         }
 
         $receiver = $this->em->getRepository(User::class)->find($receiverId);
         if (!$receiver) {
-            return new JsonResponse([
-                'message' => 'Le destinataire n\'existe pas'
-            ], 203);
+            return new CustomJsonResponse(null, 203, 'Le destinataire n\'existe pas');
         }
 
         $conversation = $this->em->getRepository(ConversationUser::class)->findOneBy([
@@ -162,24 +152,17 @@ class ConversationUserController extends AbstractController
         // Vous pouvez implémenter une méthode pour émettre le message en temps réel si nécessaire
         // $this->myFunction->emitNewMessage($receiver->getId(), $messageSend);
 
-        return new JsonResponse(
-            [
-                'message' => $messageSend
-            ],
-            201
-        );
+        return new CustomJsonResponse($messageSend, 201, 'Message envoyé avec succès');
     }
     /**
      * @Route("/conversations/{conversationId}", name="getMessageForConversation", methods={"GET"})
      */
-    public function getMessageForConversation($conversationId): JsonResponse
+    public function getMessageForConversation($conversationId): CustomJsonResponse
     {
         $conversation = $this->em->getRepository(ConversationUser::class)->find($conversationId);
 
         if (!$conversation) {
-            return new JsonResponse([
-                'message' => 'Conversation non trouvée'
-            ], 404);
+            return new CustomJsonResponse(null, 404, 'Conversation non trouvée');
         }
 
         $messages = $this->em->getRepository(MessageUser::class)->findBy(
@@ -194,11 +177,7 @@ class ConversationUserController extends AbstractController
 
 
 
-        return new JsonResponse([
-
-            'messages' => $messagesData
-
-        ], 200);
+        return new CustomJsonResponse($messagesData, 200, 'Messages récupérés avec succès');
     }
     /**
      * @Route("/message/{id}", name="deleteMessageUser", methods={"DELETE"})
@@ -208,9 +187,7 @@ class ConversationUserController extends AbstractController
         $message = $this->em->getRepository(MessageUser::class)->find($id);
 
         if (!$message) {
-            return new JsonResponse([
-                'message' => 'Message non trouvé'
-            ], 404);
+            return new CustomJsonResponse(null, 404, 'Message non trouvé');
         }
 
         $message->setDeletedAt();
@@ -219,9 +196,7 @@ class ConversationUserController extends AbstractController
 
         $messageSend = $this->myFunction->formatMessageUser($message);
 
-        return new JsonResponse([
-            'message' => $messageSend
-        ], 200);
+        return new CustomJsonResponse($messageSend, 200, 'Message supprimé avec succès');
     }
 
     /**
@@ -232,17 +207,13 @@ class ConversationUserController extends AbstractController
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['message'])) {
-            return new JsonResponse([
-                'message' => 'Veuillez renseigner le message'
-            ], 400);
+            return new CustomJsonResponse(null, 203, 'Veuillez renseigner le message');
         }
 
         $message = $this->em->getRepository(MessageUser::class)->find($id);
 
         if (!$message) {
-            return new JsonResponse([
-                'message' => 'Message non trouvé'
-            ], 404);
+            return new CustomJsonResponse(null, 404, 'Message non trouvé');
         }
 
         $message->setValeur($data['message']);
@@ -253,9 +224,7 @@ class ConversationUserController extends AbstractController
         $messageSend =
             $this->myFunction->formatMessageUser($message);
 
-        return new JsonResponse([
-            'message' => $messageSend
-        ], 200);
+        return new CustomJsonResponse($messageSend, 200, 'Message mis à jour avec succès');
     }
 
     /**
@@ -266,29 +235,23 @@ class ConversationUserController extends AbstractController
         $message = $this->em->getRepository(MessageUser::class)->find($id);
 
         if (!$message) {
-            return new JsonResponse([
-                'message' => 'Message non trouvé'
-            ], 404);
+            return new CustomJsonResponse(null, 404, 'Message non trouvé');
         }
 
         $messageSend =
             $this->myFunction->formatMessageUser($message);
 
-        return new JsonResponse([
-            'message' => $messageSend
-        ], 200);
+        return new CustomJsonResponse($messageSend, 200, 'Message récupéré avec succès');
     }
     /**
      * @Route("/conversations/{userId}", name="getUserConversations", methods={"GET"})
      */
-    public function getUserConversations($userId): JsonResponse
+    public function getUserConversations($userId): CustomJsonResponse
     {
         $user = $this->em->getRepository(User::class)->find($userId);
 
         if (!$user) {
-            return new JsonResponse([
-                'message' => 'Utilisateur non trouvé'
-            ], 404);
+            return new CustomJsonResponse(null, 404, 'Utilisateur non trouvé');
         }
 
         $conversationsAsFirst = $this->em->getRepository(ConversationUser::class)->findBy([
@@ -317,9 +280,7 @@ class ConversationUserController extends AbstractController
             ];
         }
 
-        return new JsonResponse([
-            'conversations' => $conversationsData
-        ], 200);
+        return new CustomJsonResponse($conversationsData, 200, 'Conversations récupérées avec succès');
     }
 
     private function getLastMessage(ConversationUser $conversation): ?array

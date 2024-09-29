@@ -61,6 +61,11 @@ class User implements
     #[ORM\OneToMany(mappedBy: 'emetteur', targetEntity: MessageUser::class)]
     private Collection $messageUsers;
 
+    #[ORM\OneToMany(mappedBy: 'follower', targetEntity: Follow::class)]
+    private Collection $follows;
+
+     
+
     public function __construct()
     {
         $this->userObjects = new ArrayCollection();
@@ -68,6 +73,7 @@ class User implements
         $this->conversationUsers = new ArrayCollection();
         $this->canalUsers = new ArrayCollection();
         $this->messageUsers = new ArrayCollection();
+        $this->follows = new ArrayCollection(); 
     }
 
     public function getId(): ?int
@@ -269,4 +275,35 @@ class User implements
 
         return $this;
     }
+
+    /**
+     * @return Collection<int, Follow>
+     */
+    public function getFollows(): Collection
+    {
+        return $this->follows;
+    }
+
+    public function addFollow(Follow $follow): static
+    {
+        if (!$this->follows->contains($follow)) {
+            $this->follows->add($follow);
+            $follow->setFollower($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFollow(Follow $follow): static
+    {
+        if ($this->follows->removeElement($follow)) {
+            // set the owning side to null (unless already changed)
+            if ($follow->getFollower() === $this) {
+                $follow->setFollower(null);
+            }
+        }
+
+        return $this;
+    }
+ 
 }

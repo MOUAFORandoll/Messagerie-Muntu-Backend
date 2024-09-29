@@ -18,6 +18,7 @@ use App\Entity\Groupe;
 use App\Entity\GroupeUser;
 use App\Entity\TypeObject;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
+use App\Response\CustomJsonResponse;
 
 class ConversationGroupeController extends AbstractController
 {
@@ -57,7 +58,7 @@ class ConversationGroupeController extends AbstractController
         ];
 
         if (!$this->myFunction->checkRequiredFields($data, $requiredFields)) {
-            return new JsonResponse(['message' => 'Vérifiez votre requête'], 400);
+            return new CustomJsonResponse([], 203, 'Vérifiez votre requête');
         }
 
         $emetteurId = $data['emetteurId'];
@@ -66,16 +67,12 @@ class ConversationGroupeController extends AbstractController
 
         $sender = $this->em->getRepository(User::class)->find($emetteurId);
         if (!$sender) {
-            return new JsonResponse([
-                'message' => 'Émetteur non trouvé'
-            ], 404);
+            return new CustomJsonResponse([], 404, 'Émetteur non trouvé');
         }
 
         $groupe = $this->em->getRepository(Groupe::class)->find($groupeId);
         if (!$groupe) {
-            return new JsonResponse([
-                'message' => 'Groupe non trouvé'
-            ], 404);
+            return new CustomJsonResponse([], 404, 'Groupe non trouvé');
         }
 
         $groupeUser = $this->em->getRepository(GroupeUser::class)->findOneBy([
@@ -84,9 +81,7 @@ class ConversationGroupeController extends AbstractController
         ]);
 
         if (!$groupeUser) {
-            return new JsonResponse([
-                'message' => 'Vous n\'êtes pas membre de ce groupe'
-            ], 403);
+            return new CustomJsonResponse([], 403, 'Vous n\'êtes pas membre de ce groupe');
         }
 
         $message = new Message();
@@ -106,56 +101,51 @@ class ConversationGroupeController extends AbstractController
 
         $messageSend = $this->myFunction->formatMessageGroupe($message);
 
-        return new JsonResponse(
+        return new CustomJsonResponse(
             [
                 'message' => $messageSend
             ],
-            201
+            201,
+            'Message créé avec succès'
         );
     }
     /**
      * @Route("/groupe/message/status/{id}", name="updateGroupeMessageStatus", methods={"PATCH"})
      */
-    public function updateMessageStatus(Request $request, $id): JsonResponse
+    public function updateMessageStatus(Request $request, $id): CustomJsonResponse
     {
         $message = $this->em->getRepository(Message::class)->find($id);
 
         if (!$message) {
-            return new JsonResponse([
-                'message' => 'Message non trouvé'
-            ], 404);
+            return new CustomJsonResponse([], 404, 'Message non trouvé');
         }
 
         $data = json_decode($request->getContent(), true);
         $newStatus = $data['status'] ?? null;
 
         if (!in_array($newStatus, [0, 1, 2])) {
-            return new JsonResponse([
-                'message' => 'Statut invalide. Les valeurs autorisées sont 0 (envoyé), 1 (reçu) ou 2 (lu).'
-            ], 400);
+            return new CustomJsonResponse([], 203, 'Statut invalide. Les valeurs autorisées sont 0 (envoyé), 1 (reçu) ou 2 (lu).');
         }
 
         $message->setStatus($newStatus);
         $message->setUpdatedAt();
         $this->em->flush();
         $messageSend = $this->myFunction->formatMessageGroupe($message);
-        return new JsonResponse([
+        return new CustomJsonResponse([
             'message' => $messageSend,
             'newStatus' => $newStatus
-        ], 200);
+        ], 200, 'Statut du message mis à jour');
     }
 
     /**
      * @Route("/groupe/{groupeId}/messages", name="getGroupeMessages", methods={"GET"})
      */
-    public function getGroupeMessages($groupeId): JsonResponse
+    public function getGroupeMessages($groupeId): CustomJsonResponse
     {
         $groupe = $this->em->getRepository(Groupe::class)->find($groupeId);
 
         if (!$groupe) {
-            return new JsonResponse([
-                'message' => 'Groupe non trouvé'
-            ], 404);
+            return new CustomJsonResponse([], 404, 'Groupe non trouvé');
         }
 
         $messages = $this->em->getRepository(Message::class)->findBy(
@@ -168,9 +158,9 @@ class ConversationGroupeController extends AbstractController
             $messagesData[] = $this->myFunction->formatMessageGroupe($message);
         }
 
-        return new JsonResponse([
+        return new CustomJsonResponse([
             'messages' => $messagesData
-        ], 200);
+        ], 200, 'Messages récupérés avec succès');
     }
 
     /**
@@ -181,9 +171,7 @@ class ConversationGroupeController extends AbstractController
         $message = $this->em->getRepository(Message::class)->find($id);
 
         if (!$message) {
-            return new JsonResponse([
-                'message' => 'Message non trouvé'
-            ], 404);
+            return new CustomJsonResponse([], 404, 'Message non trouvé');
         }
 
         $message->setDeletedAt();
@@ -191,9 +179,9 @@ class ConversationGroupeController extends AbstractController
 
         $messageSend = $this->myFunction->formatMessageGroupe($message);
 
-        return new JsonResponse([
+        return new CustomJsonResponse([
             'message' => $messageSend
-        ], 200);
+        ], 200, 'Message supprimé avec succès');
     }
 
     /**
@@ -204,17 +192,13 @@ class ConversationGroupeController extends AbstractController
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['message'])) {
-            return new JsonResponse([
-                'message' => 'Veuillez renseigner le message'
-            ], 400);
+            return new CustomJsonResponse([], 203, 'Veuillez renseigner le message');
         }
 
         $message = $this->em->getRepository(Message::class)->find($id);
 
         if (!$message) {
-            return new JsonResponse([
-                'message' => 'Message non trouvé'
-            ], 404);
+            return new CustomJsonResponse([], 404, 'Message non trouvé');
         }
 
         $message->setValeur($data['message']);
@@ -223,23 +207,21 @@ class ConversationGroupeController extends AbstractController
 
         $messageSend = $this->myFunction->formatMessageGroupe($message);
 
-        return new JsonResponse([
+        return new CustomJsonResponse([
             'message' => $messageSend
-        ], 200);
+        ], 200, 'Message mis à jour avec succès');
     }
 
 
     /**
      * @Route("/groupes/{userId}", name="getUserGroupes", methods={"GET"})
      */
-    public function getUserGroupes($userId): JsonResponse
+    public function getUserGroupes($userId): CustomJsonResponse
     {
         $user = $this->em->getRepository(User::class)->find($userId);
 
         if (!$user) {
-            return new JsonResponse([
-                'message' => 'Utilisateur non trouvé'
-            ], 404);
+            return new CustomJsonResponse([], 404, 'Utilisateur non trouvé');
         }
 
         $groupeUsers = $this->em->getRepository(GroupeUser::class)->findBy([
@@ -257,9 +239,9 @@ class ConversationGroupeController extends AbstractController
             ];
         }
 
-        return new JsonResponse([
+        return new CustomJsonResponse([
             'groupes' => $groupesData
-        ], 200);
+        ], 200, 'Groupes récupérés avec succès');
     }
 
     private function getLastMessage(Groupe $groupe): ?array
