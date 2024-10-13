@@ -64,8 +64,17 @@ class User implements
     #[ORM\OneToMany(mappedBy: 'follower', targetEntity: Follow::class)]
     private Collection $follows;
 
-     
 
+    #[ORM\Column(nullable: true)]
+    private ?bool $isSocialGoogle = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?bool $isSocialFacebook = null;
+
+
+    #[ORM\Column(type: "string", length: 255, nullable: true)]
+
+    private $email;
     public function __construct()
     {
         $this->userObjects = new ArrayCollection();
@@ -73,7 +82,7 @@ class User implements
         $this->conversationUsers = new ArrayCollection();
         $this->canalUsers = new ArrayCollection();
         $this->messageUsers = new ArrayCollection();
-        $this->follows = new ArrayCollection(); 
+        $this->follows = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -94,6 +103,32 @@ class User implements
         return $this;
     }
 
+    public function isIsSocialGoogle(): ?bool
+    {
+        return $this->isSocialGoogle;
+    }
+
+    public function setIsSocialGoogle(bool $isSocialGoogle): static
+    {
+        $this->isSocialGoogle = $isSocialGoogle;
+
+        return $this;
+    }
+
+    public function isIsSocialFacebook(): ?bool
+    {
+        return $this->isSocialFacebook;
+    }
+
+    public function setIsSocialFacebook(?bool $isSocialFacebook): static
+    {
+        $this->isSocialFacebook = $isSocialFacebook;
+
+        return $this;
+    }
+
+
+
     public function getPassword(): ?string
     {
         return $this->password;
@@ -106,6 +141,17 @@ class User implements
         return $this;
     }
 
+    public function getEmail(): ?string
+    {
+        return $this->email;
+    }
+
+    public function setEmail(string $email): self
+    {
+        $this->email = $email;
+
+        return $this;
+    }
     /**
      * @see UserInterface
      */
@@ -305,5 +351,4 @@ class User implements
 
         return $this;
     }
- 
 }

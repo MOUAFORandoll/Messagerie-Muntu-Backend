@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Entity\TypeUser;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -70,6 +71,37 @@ class AuthController extends AbstractController
         $this->mailer = $mailer;
     }
 
+    /**
+     * @Route("/auth/user-exist-verify", name="authUserExistVerify", methods={"POST"})
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function authUserExistVerify(Request $request)
+    {
+        $data = $request->toArray();
+
+        if (empty($data['identifiant'])) {
+            return new CustomJsonResponse(null, 203, 'Veuillez préciser votre numéro de téléphone ou votre adresse e-mail.');
+        }
+
+        $identifiant = $data['identifiant'];
+        $user = null;
+
+        $user = $this->em->getRepository(User::class)->findOneBy(['username' => $identifiant]) ?? $this->em->getRepository(User::class)->findOneBy(['email' => $identifiant]);
+
+
+        if (!$user) {
+            return new CustomJsonResponse([
+                'exist_status' => false
+            ], 200, 'Ce client n\'existe pas');
+        }
+
+        return new CustomJsonResponse([
+            'exist_status' => true
+        ], 200, 'Ce client existe');
+    }
+
+
 
     /**
      * @Route("/auth/user", name="authUser", methods={"POST"})
@@ -80,14 +112,13 @@ class AuthController extends AbstractController
     {
         $data = $request->toArray();
 
-        if (empty($data['username']) || empty($data['password'])) {
-            return new CustomJsonResponse(null, 203, 'Veuillez préciser votre username et mot de passe.');
+        if (empty($data['identifiant']) || empty($data['password'])) {
+            return new CustomJsonResponse(null, 203, 'Veuillez préciser votre identifiant et mot de passe.');
         }
 
-        $username = $data['username'];
+        $identifiant = $data['identifiant'];
         $password = $data['password'];
-        $user = $this->em->getRepository(User::class)->findOneBy(['username' => $username]);
-
+        $user = $this->em->getRepository(User::class)->findOneBy(['username' => $identifiant]) ?? $this->em->getRepository(User::class)->findOneBy(['email' => $identifiant]);
 
         if (!$user) {
             return new CustomJsonResponse(null, 203, 'Ce client n\'existe pas');
@@ -116,8 +147,8 @@ class AuthController extends AbstractController
     {
         $data = $request->toArray();
 
-        if (empty($data['username']) || empty($data['password'])) {
-            return new CustomJsonResponse(null, 203, 'Veuillez préciser votre nom, prénom, numéro de téléusername et mot de passe.');
+        if (empty($data['username']) || empty($data['email']) || empty($data['password'])) {
+            return new CustomJsonResponse(null, 203, 'Veuillez  votre nom d\'utilisateur, adresse mail et mot de passe.');
         }
 
 
@@ -134,7 +165,7 @@ class AuthController extends AbstractController
         if ($userEmail) {
             return new CustomJsonResponse(null, 203, 'Adresse email déjà utilisée');
         }
-        $keySecret = $this->createUniqueUid();
+        // $keySecret = $this->createUniqueUid();
         // $keySecret = $this->generateKeySecret($username, $password);
 
         $user = new User();
@@ -227,6 +258,66 @@ class AuthController extends AbstractController
             200,
             'Utilisateur récupéré avec succès'
         );
+    }
+    /**
+     * @Route("/auth/user/social", name="authOrCreateSocialUser", methods={"POST"})
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function authOrCreateSocialUser(Request $request)
+    {
+        $data = $request->toArray();
+
+        if (empty($data['email']) || empty($data['nom'])) {
+            return new CustomJsonResponse(null, 203, 'Veuillez fournir un email et un nom.');
+        }
+
+        $user = $this->em->getRepository(User::class)->findOneBy(['email' => $data['email']]);
+
+        if (!$user) {
+            // Créer un nouvel utilisateur
+            $user = new User();
+            $user->setUsername($data['nom']);
+            $user->setEmail($data['email']);
+            // $user->setEmail($data['email']);
+            $password = bin2hex(random_bytes(8)); // Génère un mot de passe aléatoire
+            $user->setPassword($this->passwordEncoder->hashPassword($user, $password));
+
+            // $keySecret = password_hash(($data['email'] . $password . (new \DateTime())->format('Y-m-d H:i:s') . implode("", array_map(fn() => random_int(0, 9), range(1, 4)))), PASSWORD_DEFAULT);
+            $keySecret = $this->createUniqueUid();
+
+            // $user->setTypeUser($this->em->getRepository(TypeUser::class)->findOneBy(['id' => 2]));
+
+            if (isset($data['isSocialFacebook'])) {
+                $user->setIsSocialFacebook($data['isSocialFacebook']);
+            }
+
+            if (isset($data['isSocialGoogle'])) {
+                $user->setIsSocialGoogle($data['isSocialGoogle']);
+            }
+
+            $this->em->persist($user);
+            $this->em->flush();
+
+            $message = 'Nouvel utilisateur créé et authentifié avec succès';
+        } else {
+            if (
+                (!$user->isIsSocialGoogle() && !$user->isIsSocialFacebook()) &&  !empty($user->getPassword())
+            ) {
+                return new CustomJsonResponse(null, 203, 'Vous avez déjà un compte avec mot de passe associé à cette adresse e-mail. Veuillez utiliser l\'authentification normale.');
+            }
+            $message = 'Utilisateur existant authentifié avec succès';
+        }
+
+        $infoUser = $this->createNewJWT($user);
+        $tokenAndRefresh = json_decode($infoUser->getContent(), true);
+        $userFormat = $this->myFunction->formatUser($user);
+
+        return new CustomJsonResponse([
+            'token' => $tokenAndRefresh['token'],
+            'refreshToken' => $tokenAndRefresh['refreshToken'],
+            'user' => $userFormat
+        ], 200, $message);
     }
 
 
