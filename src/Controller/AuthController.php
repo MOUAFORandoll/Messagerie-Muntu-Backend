@@ -118,7 +118,7 @@ class AuthController extends AbstractController
 
         $identifiant = $data['identifiant'];
         $password = $data['password'];
-        $user = $this->em->getRepository(User::class)->findOneBy(['username' => $identifiant]) ?? $this->em->getRepository(User::class)->findOneBy(['email' => $identifiant]);
+        $user = $this->em->getRepository(User::class)->findOneBy(['anonymousId' => $identifiant]) ?? $this->em->getRepository(User::class)->findOneBy(['email' => $identifiant]);
 
         if (!$user) {
             return new CustomJsonResponse(null, 203, 'Ce client n\'existe pas');
@@ -190,6 +190,81 @@ class AuthController extends AbstractController
         ], 201, 'Utilisateur créé avec succès');
     }
 
+    /**
+     * @Route("/auth/user/anonymous-id", name="createAnonymousId", methods={"GET"})
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function createAnonymousId(Request $request)
+    {
+
+        // Génération de l'anonymousId
+        $anonymousId = 'M' . str_pad(random_int(0, 999), 3, '0', STR_PAD_LEFT) . 'NA' . str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+
+        // Vérification de l'unicité de l'anonymousId
+        $isUnique = false;
+        while (!$isUnique) {
+            $existingUser = $this->em->getRepository(User::class)->findOneBy(['anonymousId' => $anonymousId]);
+            if (!$existingUser) {
+                $isUnique = true;
+            } else {
+                $anonymousId = 'M' . str_pad(random_int(0, 999), 3, '0', STR_PAD_LEFT) . 'NA' . str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+            }
+        }
+
+
+
+        return new CustomJsonResponse([
+            'anonymousId' => $anonymousId,
+        ], 200, 'Identifiant anonyme généré avec succès');
+    }
+
+
+    /**
+     * @Route("/auth/user/create-anonymous-user", name="createAnonymousUser", methods={"POST"})
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function createAnonymousUser(Request $request)
+    {
+        $data = $request->toArray();
+
+        if (empty($data['password']) || empty($data['anonymousId'])) {
+            return new CustomJsonResponse(null, 203, 'Veuillez fournir un mot de passe.');
+        }
+
+
+
+        $anonymousId = $data['anonymousId'];
+        $password = $data['password'];
+
+        $user = $this->em->getRepository(User::class)->findOneBy(['anonymousId' => $anonymousId]);
+        if ($user) {
+            return new CustomJsonResponse(null, 203, 'Cet identifiant anonyme est déjà utilisé');
+        }
+
+        $user = new User();
+
+        $user->setAnonymousId($anonymousId);
+
+        $encodedPassword = $this->passwordEncoder->hashPassword($user, $password);
+        $user->setPassword($encodedPassword);
+        $user->setusername($anonymousId);
+
+        $this->em->persist($user);
+        $this->em->flush();
+
+        $infoUser = $this->createNewJWT($user);
+        $tokenAndRefresh = json_decode($infoUser->getContent(), true);
+
+        $userFormat = $this->myFunction->formatUser($user);
+
+        return new CustomJsonResponse([
+            'user' => $userFormat,
+            'token' => $tokenAndRefresh['token'],
+            'refreshToken' => $tokenAndRefresh['refreshToken'],
+        ], 201, 'Utilisateur anonyme créé avec succès');
+    }
 
     /**
      * @Route("/auth/user/new-password", name="newPassword", methods={"POST"})

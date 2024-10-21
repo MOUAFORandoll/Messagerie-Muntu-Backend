@@ -75,6 +75,9 @@ class User implements
     #[ORM\Column(type: "string", length: 255, nullable: true)]
 
     private $email;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $anonymousId = null;
     public function __construct()
     {
         $this->userObjects = new ArrayCollection();
@@ -348,6 +351,18 @@ class User implements
                 $follow->setFollower(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getAnonymousId(): ?string
+    {
+        return $this->anonymousId;
+    }
+
+    public function setAnonymousId(string $anonymousId): static
+    {
+        $this->anonymousId = $anonymousId;
 
         return $this;
     }
