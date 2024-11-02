@@ -78,6 +78,15 @@ class User implements
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $anonymousId = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $phone = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $codePhone = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $surname = null;
     public function __construct()
     {
         $this->userObjects = new ArrayCollection();
@@ -363,6 +372,42 @@ class User implements
     public function setAnonymousId(string $anonymousId): static
     {
         $this->anonymousId = $anonymousId;
+
+        return $this;
+    }
+
+    public function getPhone(): ?string
+    {
+        return $this->phone;
+    }
+
+    public function setPhone(?string $phone): static
+    {
+        $this->phone = $phone;
+
+        return $this;
+    }
+
+    public function getCodePhone(): ?string
+    {
+        return $this->codePhone;
+    }
+
+    public function setCodePhone(?string $codePhone): static
+    {
+        $this->codePhone = $codePhone;
+
+        return $this;
+    }
+
+    public function getSurname(): ?string
+    {
+        return $this->surname;
+    }
+
+    public function setSurname(?string $surname): static
+    {
+        $this->surname = $surname;
 
         return $this;
     }

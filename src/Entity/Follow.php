@@ -19,6 +19,12 @@ class Follow
     #[ORM\ManyToOne(inversedBy: 'follows')]
     private ?User $following = null;
 
+    #[ORM\Column(length: 255)]
+    private ?string $nameContact = null;
+
+    #[ORM\Column(length: 255)]
+    private ?string $sunameContact = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -44,6 +50,30 @@ class Follow
     public function setFollowing(?User $following): static
     {
         $this->following = $following;
+
+        return $this;
+    }
+
+    public function getNameContact(): ?string
+    {
+        return $this->nameContact;
+    }
+
+    public function setNameContact(string $nameContact): static
+    {
+        $this->nameContact = $nameContact;
+
+        return $this;
+    }
+
+    public function getSunameContact(): ?string
+    {
+        return $this->sunameContact;
+    }
+
+    public function setSunameContact(string $sunameContact): static
+    {
+        $this->sunameContact = $sunameContact;
 
         return $this;
     }
