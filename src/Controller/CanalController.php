@@ -310,7 +310,7 @@ class CanalController extends AbstractController
         foreach ($membres as $membre) {
             $membresData[] = [
                 'id' => $membre->getMuntu()->getId(),
-                'username' => $membre->getMuntu()->getUsername(),
+                'username' => $membre->getMuntu()->getNameUser(),
                 'typeUser' => $membre->getTypeParticipant()->getLibelle()
             ];
         }

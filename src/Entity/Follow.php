@@ -13,11 +13,6 @@ class Follow
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'follows')]
-    private ?User $follower = null;
-
-    #[ORM\ManyToOne(inversedBy: 'follows')]
-    private ?User $following = null;
 
     #[ORM\Column(length: 255)]
     private ?string $nameContact = null;
@@ -25,33 +20,15 @@ class Follow
     #[ORM\Column(length: 255)]
     private ?string $surnameContact = null;
 
+    #[ORM\ManyToOne(inversedBy: 'follows')]
+    private ?User $following = null;
+
+    #[ORM\ManyToOne(inversedBy: 'followCurrentUsers')]
+    private ?User $currentUser = null;
+
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getFollower(): ?User
-    {
-        return $this->follower;
-    }
-
-    public function setFollower(?User $follower): static
-    {
-        $this->follower = $follower;
-
-        return $this;
-    }
-
-    public function getFollowing(): ?User
-    {
-        return $this->following;
-    }
-
-    public function setFollowing(?User $following): static
-    {
-        $this->following = $following;
-
-        return $this;
     }
 
     public function getNameContact(): ?string
@@ -74,6 +51,30 @@ class Follow
     public function setSurnameContact(string $surnameContact): static
     {
         $this->surnameContact = $surnameContact;
+
+        return $this;
+    }
+
+    public function getFollowing(): ?User
+    {
+        return $this->following;
+    }
+
+    public function setFollowing(?User $following): static
+    {
+        $this->following = $following;
+
+        return $this;
+    }
+
+    public function getCurrentUser(): ?User
+    {
+        return $this->currentUser;
+    }
+
+    public function setCurrentUser(?User $currentUser): static
+    {
+        $this->currentUser = $currentUser;
 
         return $this;
     }

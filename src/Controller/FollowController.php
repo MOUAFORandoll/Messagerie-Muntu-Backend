@@ -32,7 +32,7 @@ class FollowController extends AbstractController
     public function createFollowNewContact(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        $follower = $this->myFunction->requestUser($request);
+        $user = $this->myFunction->requestUser($request);
         $nameContact = $data['nameContact'];
         $surnameContact = $data['surnameContact'];
         if (!$nameContact || !$surnameContact) {
@@ -46,22 +46,22 @@ class FollowController extends AbstractController
 
         $following = $this->em->getRepository(User::class)->findOneBy(['phone' => $phoneContact]);
         if (!$following) {
-            return new CustomJsonResponse(null, 203, 'L\'utilisateur à suivre n\'existe pas');
+            return new CustomJsonResponse(null, 203,    'L\'utilisateur à suivre n\'existe pas');
         }
 
-        if ($follower === $following) {
+        if ($user === $following) {
             return new CustomJsonResponse(null, 400, 'Vous ne pouvez pas vous suivre vous-même');
         }
 
         $existingFollow = $this->em->getRepository(Follow::class)->findOneBy([
-            'follower' => $follower,
+            'currentUser' => $user,
             'following' => $following
         ]);
 
         if ($existingFollow) {
             return new    CustomJsonResponse([
                 'id' => $existingFollow->getId(),
-                'username' => $existingFollow->getFollowing()->getUsername(),
+                'username' => $existingFollow->getFollowing()->getNameUser(),
                 'nameContact' => $existingFollow->getNameContact(),
                 'surnameContact' => $existingFollow->getsurnameContact(),
                 'phone' => $existingFollow->getFollowing()->getPhone(),
@@ -70,7 +70,7 @@ class FollowController extends AbstractController
         }
 
         $follow = new Follow();
-        $follow->setFollower($follower);
+        $follow->setCurrentUser($user);
         $follow->setFollowing($following);
         $follow->setNameContact($nameContact);
         $follow->setsurnameContact($surnameContact);
@@ -80,7 +80,7 @@ class FollowController extends AbstractController
 
         return new CustomJsonResponse([
             'id' => $follow->getId(),
-            'username' => $follow->getFollowing()->getUsername(),
+            'username' => $follow->getFollowing()->getNameUser(),
             'nameContact' => $follow->getNameContact(),
             'surnameContact' => $follow->getsurnameContact(),
             'phone' => $follow->getFollowing()->getPhone(),
@@ -94,7 +94,7 @@ class FollowController extends AbstractController
     public function updateFollowContact(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        $follower = $this->myFunction->requestUser($request);
+        $user = $this->myFunction->requestUser($request);
         $nameContact = $data['nameContact'];
         $surnameContact = $data['surnameContact'];
         $idFollow = $data['idFollow'];
@@ -117,7 +117,7 @@ class FollowController extends AbstractController
 
         return new CustomJsonResponse([
             'id' => $existingFollow->getId(),
-            'username' => $existingFollow->getFollowing()->getUsername(),
+            'username' => $existingFollow->getFollowing()->getNameUser(),
             'nameContact' => $existingFollow->getNameContact(),
             'surnameContact' => $existingFollow->getsurnameContact(),
             'phone' => $existingFollow->getFollowing()->getPhone(),
@@ -156,7 +156,7 @@ class FollowController extends AbstractController
         $limit = $request->query->getInt('limit', 10);
 
         $contactsQuery = $this->em->getRepository(Follow::class)->createQueryBuilder('f')
-            ->where('f.follower = :user')
+            ->where('f.user = :user')
             ->setParameter('user', $user)
             ->getQuery();
 
@@ -166,15 +166,8 @@ class FollowController extends AbstractController
             ->setFirstResult($limit * ($page - 1))
             ->setMaxResults($limit);
 
-        $formattedContacts = array_map(function ($follow) {
-            return [
-                'id' => $follow->getId(),
-                'username' => $follow->getFollowing()->getUsername(),
-                'nameContact' => $follow->getNameContact(),
-                'surnameContact' => $follow->getsurnameContact(),
-                'phone' => $follow->getFollowing()->getPhone(),
-                'codePhone' => $follow->getFollowing()->getCodePhone()
-            ];
+        $formattedContacts = array_map(function ($follow) use ($user) {
+            return $this->myFunction->formatContact($user, $follow->getFollowing());
         }, iterator_to_array($paginator));
 
         $paginatedResults = new \stdClass();
@@ -194,7 +187,7 @@ class FollowController extends AbstractController
     public function createFollow(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        $follower = $this->myFunction->requestUser($request);
+        $user = $this->myFunction->requestUser($request);
         $followingId = $data['following_id'] ?? null;
 
         if (!$followingId) {
@@ -207,12 +200,12 @@ class FollowController extends AbstractController
             return new CustomJsonResponse(null, 203, 'L\'utilisateur à suivre n\'existe pas');
         }
 
-        if ($follower === $following) {
+        if ($user === $following) {
             return new CustomJsonResponse(null, 400, 'Vous ne pouvez pas vous suivre vous-même');
         }
 
         $existingFollow = $this->em->getRepository(Follow::class)->findOneBy([
-            'follower' => $follower,
+            'currentUser' => $user,
             'following' => $following
         ]);
 
@@ -221,9 +214,9 @@ class FollowController extends AbstractController
         }
 
         $follow = new Follow();
-        $follow->setFollower($follower);
+        $follow->setCurrentUser($user);
         $follow->setFollowing($following);
-        $follow->setNameContact($following->getUsername());
+        $follow->setNameContact($following->getNameUser());
         $follow->setsurnameContact($following->getSurname());
         $this->em->persist($follow);
         $this->em->flush();
@@ -239,7 +232,7 @@ class FollowController extends AbstractController
         $following = $this->myFunction->requestUser($request);
         $follow = $this->em->getRepository(Follow::class)->findOneBy([
             'following' => $following,
-            'follower' => $id
+            'currentUsers' => $id
         ]);
 
 
@@ -255,18 +248,18 @@ class FollowController extends AbstractController
     }
 
     /**
-     * @Route("/followers", name="getFollowers", methods={"GET"})
+     * @Route("/users", name="getFollowers", methods={"GET"})
      */
     public function getFollowers(Request $request): JsonResponse
     {
         $user = $this->myFunction->requestUser($request);
-        $followers = $this->em->getRepository(Follow::class)->findBy(['following' => $user]);
+        $users = $this->em->getRepository(Follow::class)->findBy(['following' => $user]);
 
         $formattedFollowers = array_map(function ($follow) {
             return $this->myFunction->formatUser($follow->getFollower());
-        }, $followers);
+        }, $users);
 
-        return new CustomJsonResponse(['followers' => $formattedFollowers], 200, 'Liste des abonnés récupérée avec succès');
+        return new CustomJsonResponse(['users' => $formattedFollowers], 200, 'Liste des abonnés récupérée avec succès');
     }
 
     /**
@@ -275,7 +268,7 @@ class FollowController extends AbstractController
     public function getFollowing(Request $request): JsonResponse
     {
         $user = $this->myFunction->requestUser($request);
-        $following = $this->em->getRepository(Follow::class)->findBy(['follower' => $user]);
+        $following = $this->em->getRepository(Follow::class)->findBy(['user' => $user]);
 
         $formattedFollowing = array_map(function ($follow) {
             return $this->myFunction->formatUser($follow->getFollowing());
@@ -289,7 +282,7 @@ class FollowController extends AbstractController
      */
     public function checkFollow(Request $request, int $id): JsonResponse
     {
-        $follower = $this->myFunction->requestUser($request);
+        $user = $this->myFunction->requestUser($request);
         $following = $this->em->getRepository(User::class)->find($id);
 
         if (!$following) {
@@ -297,7 +290,7 @@ class FollowController extends AbstractController
         }
 
         $follow = $this->em->getRepository(Follow::class)->findOneBy([
-            'follower' => $follower,
+            'user' => $user,
             'following' => $following
         ]);
 

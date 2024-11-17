@@ -39,7 +39,7 @@ class AuthController extends AbstractController
     private $jwtRefresh;
     private $validator;
     private $myFunction;
-    private $paginator; 
+    private $paginator;
     public function __construct(
         SerializerInterface $serializer,
         EntityManagerInterface $em,
@@ -52,12 +52,12 @@ class AuthController extends AbstractController
         ValidatorInterface
         $validator,
         MyFunction
-        $myFunction, 
+        $myFunction,
 
     ) {
         $this->em = $em;
         $this->serializer = $serializer;
-        $this->myFunction = $myFunction; 
+        $this->myFunction = $myFunction;
         $this->passwordEncoder = $passwordEncoder;
         $this->user = $user;
         $this->jwt = $jwt;
@@ -430,7 +430,7 @@ class AuthController extends AbstractController
 
         $refreshToken = $this->jwtRefresh->create();
 
-        $refreshToken->setUsername($user->getUsername());
+        $refreshToken->setUsername($user->getNameUser());
         $refreshToken->setRefreshToken();
         $refreshToken->setValid($datetime);
 
@@ -481,7 +481,7 @@ class AuthController extends AbstractController
 
         // if ($user) {
         //     // User is authenticated, and you can access the user object
-        //     return new JsonResponse(['username' => $user->getUsername()]);
+        //     return new JsonResponse(['username' => $user->getNameUser()]);
         // } else {
         //     // No user is authenticated
         //     return new JsonResponse(['message' => 'No user is authenticated']);

@@ -44,7 +44,7 @@ class JwtRefreshToken extends BaseRefreshToken
 
         $model = new static();
         $model->setRefreshToken($refreshToken);
-        $model->setUsername(method_exists($user, 'getUserIdentifier') ? $user->getUserIdentifier() : $user->getUsername());
+        $model->setUsername(method_exists($user, 'getUserIdentifier') ? $user->getUserIdentifier() : $user->getNameUser());
         $model->setValid($valid);
         $dateExpireToken = new \DateTime();
         $dateExpireToken->modify("+60 minutes");

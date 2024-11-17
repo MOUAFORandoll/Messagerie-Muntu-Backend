@@ -61,8 +61,6 @@ class User implements
     #[ORM\OneToMany(mappedBy: 'emetteur', targetEntity: MessageUser::class)]
     private Collection $messageUsers;
 
-    #[ORM\OneToMany(mappedBy: 'follower', targetEntity: Follow::class)]
-    private Collection $follows;
 
 
     #[ORM\Column(nullable: true)]
@@ -87,6 +85,12 @@ class User implements
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $surname = null;
+
+    #[ORM\OneToMany(mappedBy: 'following', targetEntity: Follow::class)]
+    private Collection $follows;
+
+    #[ORM\OneToMany(mappedBy: 'currentUser', targetEntity: Follow::class)]
+    private Collection $followCurrentUsers;
     public function __construct()
     {
         $this->userObjects = new ArrayCollection();
@@ -95,6 +99,7 @@ class User implements
         $this->canalUsers = new ArrayCollection();
         $this->messageUsers = new ArrayCollection();
         $this->follows = new ArrayCollection();
+        $this->followCurrentUsers = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -339,35 +344,6 @@ class User implements
         return $this;
     }
 
-    /**
-     * @return Collection<int, Follow>
-     */
-    public function getFollows(): Collection
-    {
-        return $this->follows;
-    }
-
-    public function addFollow(Follow $follow): static
-    {
-        if (!$this->follows->contains($follow)) {
-            $this->follows->add($follow);
-            $follow->setFollower($this);
-        }
-
-        return $this;
-    }
-
-    public function removeFollow(Follow $follow): static
-    {
-        if ($this->follows->removeElement($follow)) {
-            // set the owning side to null (unless already changed)
-            if ($follow->getFollower() === $this) {
-                $follow->setFollower(null);
-            }
-        }
-
-        return $this;
-    }
 
     public function getAnonymousId(): ?string
     {
@@ -413,6 +389,65 @@ class User implements
     public function setSurname(?string $surname): static
     {
         $this->surname = $surname;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Follow>
+     */
+    public function getFollows(): Collection
+    {
+        return $this->follows;
+    }
+
+    public function addFollow(Follow $follow): static
+    {
+        if (!$this->follows->contains($follow)) {
+            $this->follows->add($follow);
+            $follow->setFollowing($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFollow(Follow $follow): static
+    {
+        if ($this->follows->removeElement($follow)) {
+            // set the owning side to null (unless already changed)
+            if ($follow->getFollowing() === $this) {
+                $follow->setFollowing(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Follow>
+     */
+    public function getFollowCurrentUsers(): Collection
+    {
+        return $this->followCurrentUsers;
+    }
+    public function addFollowCurrentUser(Follow $followCurrentUser): static
+    {
+        if (!$this->followCurrentUsers->contains($followCurrentUser)) {
+            $this->followCurrentUsers->add($followCurrentUser);
+            $followCurrentUser->setCurrentUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFollowCurrentUser(Follow $followCurrentUser): static
+    {
+        if ($this->followCurrentUsers->removeElement($followCurrentUser)) {
+            // set the owning side to null (unless already changed)
+            if ($followCurrentUser->getCurrentUser() === $this) {
+                $followCurrentUser->setCurrentUser(null);
+            }
+        }
 
         return $this;
     }

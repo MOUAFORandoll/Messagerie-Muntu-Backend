@@ -339,57 +339,25 @@ class ConversationUserController extends AbstractController
         $offset = ($page - 1) * $limit;
         $paginatedConversations = array_slice($conversations, $offset, $limit);
 
-
-
-
-
         foreach ($paginatedConversations as $conversation) {
             $otherUser = $conversation->getFirst()->getId() === $user->getId()
                 ? $conversation->getSecond()
                 : $conversation->getFirst();
-            $existingFollow = $this->em->getRepository(Follow::class)->findOneBy([
-                'follower' => $user,
-                'following' => $otherUser
-            ]) ??
-                $this->em->getRepository(Follow::class)->findOneBy([
-                    'follower' => $otherUser,
-                    'following' => $user
-                ]);
-            if ($existingFollow) {
 
 
-                $contact = [
-                    'id' => $otherUser->getId(),
-                    'username' => $existingFollow->getNameContact(),
-                    'nameContact' => $existingFollow->getNameContact(),
-                    'surnameContact' => $existingFollow->getSurnameContact(),
-                    'phone' => $otherUser->getPhone(),
-                    'codePhone' => $otherUser->getCodePhone()
-                ];
-            } else {
-                $contact = [
-                    'id' => $otherUser->getId(),
-                    'username' => $otherUser->getNameUser(),
-                    'nameContact' => $otherUser->getNameUser(),
-                    'surnameContact' => "",
-                    'phone' => $otherUser->getPhone(),
-                    'codePhone' => $otherUser->getCodePhone()
-                ];
-            }
+            $contact = $this->myFunction->formatContact($user, $otherUser);
             $conversationsData[] = [
                 'id' => $conversation->getId(),
                 'otherUser' => $contact,
                 'lastMessage' => $this->getLastMessage($conversation)
             ];
-
-            $paginatedResults = [
-                'total' => count($conversations),
-                'page' => $page,
-                'data' => $conversationsData
-            ];
-
-            return new CustomJsonResponse($paginatedResults, 200, 'Conversations récupérées avec succès');
         }
+        $paginatedResults = [
+            'total' => count($conversations),
+            'page' => $page,
+            'data' => $conversationsData
+        ];
+        return new CustomJsonResponse($paginatedResults, 200, 'Conversations récupérées avec succès');
     }
 
     private function getLastMessage(ConversationUser $conversation): ?array

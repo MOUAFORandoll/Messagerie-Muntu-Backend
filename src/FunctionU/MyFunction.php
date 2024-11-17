@@ -14,6 +14,7 @@ use App\Entity\OrdonnanceMedicament;
 use App\Entity\Panier;
 use App\Entity\UserObject;
 use App\Entity\Produit;
+use App\Entity\Follow;
 use App\Entity\User;
 use App\Entity\Compte;
 
@@ -173,11 +174,11 @@ class MyFunction
                 'status' => $message->getStatus(),
                 'emetteur' => [
                     'id' => $message->getEmetteur()->getId(),
-                    'username' => $message->getEmetteur()->getUsername()
+                    'username' => $message->getEmetteur()->getNameUser()
                 ],
                 'receiver' => [
                     'id' => $message->getConversation()->getSecond()->getId(),
-                    'username' => $message->getConversation()->getSecond()->getUsername()
+                    'username' => $message->getConversation()->getSecond()->getNameUser()
                 ],
                 'messageTarget' => $message->getMessageTarget() != null ? $this->formatMessageUser($message->getMessageTarget(),) : null,
                 'attachFile' =>  $message->getDeletedAt() != null ? [] : $this->getAttachMessageObject($message)
@@ -208,7 +209,7 @@ class MyFunction
                 'status' => $message->getStatus(),
                 'emetteur' => [
                     'id' => $message->getEmetteurCanal()->getMuntu()->getId(),
-                    'username' => $message->getEmetteurCanal()->getMuntu()->getUsername()
+                    'username' => $message->getEmetteurCanal()->getMuntu()->getNameUser()
                 ],
 
             ];
@@ -226,7 +227,7 @@ class MyFunction
                 'status' => $message->getStatus(),
                 'emetteur' => [
                     'id' => $message->getEmetteurCanal()->getMuntu()->getId(),
-                    'username' => $message->getEmetteurCanal()->getMuntu()->getUsername()
+                    'username' => $message->getEmetteurCanal()->getMuntu()->getNameUser()
                 ],
 
             ];
@@ -269,7 +270,7 @@ class MyFunction
         // $user->getUserObjects()[count($user->getUserObjects()) - 1]->getSrc();
         $userU = [
             'id' => $user->getId(),
-            'username' => $user->getUsername(),
+            'username' => $user->getNameUser(),
 
 
             'date_created' => date_format($user->getCreatedAt(), 'Y-m-d H:i'),
@@ -280,13 +281,40 @@ class MyFunction
 
         return  $userU;
     }
+    public function formatContact(User $user, User $following): array
+    {
+        $existingFollow = $this->em->getRepository(Follow::class)->findOneBy([
+            'following' =>  $following,
+            'currentUser' => $user
+        ]);
+
+        if ($existingFollow) {
+            return [
+                'id' => $user->getId(),
+                'username' => $existingFollow->getNameContact(),
+                'nameContact' => $existingFollow->getNameContact(),
+                'surnameContact' => $existingFollow->getSurnameContact(),
+                'phone' => $following->getPhone(),
+                'codePhone' => $following->getCodePhone()
+            ];
+        }
+
+        return [
+            'id' => $following->getId(),
+            'username' => $following->getNameUser(),
+            'nameContact' => $following->getNameUser(),
+            'surnameContact' => "",
+            'phone' => $following->getPhone(),
+            'codePhone' => $following->getCodePhone()
+        ];
+    }
 
     public function requestUser(Request $request)
     {
         $user = $this->security->getUser();
 
         if ($user) {
-            $userFound = $this->em->getRepository(User::class)->findOneBy(['id' => $user->getUsername()]);
+            $userFound = $this->em->getRepository(User::class)->findOneBy(['id' => $user->getUserName()]);
             return $userFound;
         }
         return null;
