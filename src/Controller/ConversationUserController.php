@@ -8,10 +8,14 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 
 use Symfony\Component\Routing\Annotation\Route;
 use App\FunctionU\MyFunction;
 use App\Entity\User;
+use App\Entity\Follow;
+
+
 use App\Entity\MessageUser;
 use App\Entity\MessageObject;
 use App\Entity\ConversationUser;
@@ -73,31 +77,34 @@ class ConversationUserController extends AbstractController
 
 
     /**
-     * @Route("/message", name="newMessageUser", methods={"POST"})
+     * @Route("/messages", name="newMessageUser", methods={"POST"})
      */
     public function newMessageUser(Request $request)
     {
 
 
         $data = [
-            'emetteurId' => $request->get('emetteurId'),
+            'emetteur_id' => $request->get('emetteur_id'),
             'message' => $request->get('message'),
-            'receiverId' => $request->get('receiverId'),
+            'receiver_id' => $request->get('receiver_id'),
+
+            'typeFile' => $request->get('typeFile'),
+            'message_target' => $request->get('message_target'),
         ];
 
         $requiredFields = [
-            'emetteurId',
+            'emetteur_id',
             'message',
-            'receiverId'
+            'receiver_id'
         ];
 
         if (!$this->myFunction->checkRequiredFields($data, $requiredFields)) {
             return new CustomJsonResponse(null, 203, 'Vérifiez votre requête');
         }
 
-        $emetteurId = $data['emetteurId'];
+        $emetteurId = $data['emetteur_id'];
         $messageText = $data['message'];
-        $receiverId = $data['receiverId'];
+        $receiverId = $data['receiver_id'];
 
         $sender = $this->em->getRepository(User::class)->findOneBy(['id' => $emetteurId]);
         if (!$sender) {
@@ -133,7 +140,25 @@ class ConversationUserController extends AbstractController
         $message->setEmetteur($sender);
         $message->setConversation($conversation);
         $message->setStatus(0);
+        if ((isset($data['message_target']) &&  $data['message_target'] != null)) {
+            $message_target
+                = $data['message_target'];
+            $messageTarget
+                = $this->em->getRepository(MessageUser::class)->findOneBy(['id' => $message_target]);
+            if ($messageTarget) {
 
+                $message->setMessageTarget($messageTarget);
+            }
+        }
+        $fichiers = [];
+        $this->em->persist($message);
+        $this->em->flush();
+        if (isset($data['typeFile']) && $data['typeFile'] != null) {
+            $typeFile
+                = $data['typeFile'];
+
+            $fichiers =   $this->creatMessageObject($message, $request, $typeFile);
+        }
         $this->em->persist($message);
         if (isset($data['typeObject']) && $data['typeObject'] != null) {
             $typeObjectId
@@ -152,32 +177,74 @@ class ConversationUserController extends AbstractController
         // Vous pouvez implémenter une méthode pour émettre le message en temps réel si nécessaire
         // $this->myFunction->emitNewMessage($receiver->getId(), $messageSend);
 
-        return new CustomJsonResponse($messageSend, 201, 'Message envoyé avec succès');
+        return new JsonResponse($messageSend, 201,);
     }
     /**
-     * @Route("/conversations/{conversationId}", name="getMessageForConversation", methods={"GET"})
+     * @Route("/conversations-messages", name="getMessageForConversation", methods={"GET"})
      */
-    public function getMessageForConversation($conversationId): CustomJsonResponse
+    public function getMessageForConversation(Request $request): CustomJsonResponse
     {
-        $conversation = $this->em->getRepository(ConversationUser::class)->find($conversationId);
+        $data = [
+            'emetteur_id' => $request->get('emetteur_id'),
+
+            'recepteur_id' => $request->get('recepteur_id'),
+        ];
+
+        $requiredFields = [
+            'emetteur_id',
+
+            'recepteur_id'
+        ];
+
+        if (!$this->myFunction->checkRequiredFields($data, $requiredFields)) {
+            return new CustomJsonResponse(null, 203, 'Vérifiez votre requête');
+        }
+        $emetteurId = $data['emetteur_id'];
+
+        $receiverId = $data['recepteur_id'];
+
+        $conversation = $this->em->getRepository(ConversationUser::class)->findOneBy([
+            'first' => $emetteurId,
+            'second' => $receiverId
+        ]);
 
         if (!$conversation) {
-            return new CustomJsonResponse(null, 404, 'Conversation non trouvée');
+            $conversation = $this->em->getRepository(ConversationUser::class)->findOneBy([
+                'first' => $receiverId,
+                'second' => $emetteurId
+            ]);
         }
-
-        $messages = $this->em->getRepository(MessageUser::class)->findBy(
-            ['conversation' => $conversation],
-            ['createdAt' => 'ASC']
-        );
-
-        $messagesData = [];
-        foreach ($messages as $message) {
-            $messagesData[] = $this->myFunction->formatMessageUser($message);
+        if (!$conversation) {
+            return new CustomJsonResponse([
+                'total' => 0,
+                'page' => 0,
+                'data' => []
+            ],  200, 'Conversation non trouvée');
         }
+        $page = $request->query->getInt('page', 1);
+        $limit = $request->query->getInt('limit', 10);
 
+        $messagesQuery = $this->em->getRepository(MessageUser::class)->createQueryBuilder('m')
+            ->where('m.conversation = :conversation')
+            ->setParameter('conversation', $conversation)
+            ->orderBy('m.createdAt', 'ASC')
+            ->getQuery();
 
+        $paginator = new Paginator($messagesQuery);
+        $totalMessages = count($paginator);
+        $paginator->getQuery()
+            ->setFirstResult($limit * ($page - 1))
+            ->setMaxResults($limit);
 
-        return new CustomJsonResponse($messagesData, 200, 'Messages récupérés avec succès');
+        $messagesData = array_map(function ($message) {
+            return $this->myFunction->formatMessageUser($message);
+        }, iterator_to_array($paginator));
+
+        return new CustomJsonResponse([
+            'total' => $totalMessages,
+            'page' => $page,
+            'data' => $messagesData
+        ], 200, 'Messages récupérés avec succès');
     }
     /**
      * @Route("/message/{id}", name="deleteMessageUser", methods={"DELETE"})
@@ -244,12 +311,14 @@ class ConversationUserController extends AbstractController
         return new CustomJsonResponse($messageSend, 200, 'Message récupéré avec succès');
     }
     /**
-     * @Route("/conversations/{userId}", name="getUserConversations", methods={"GET"})
+     * @Route("/list-conversations", name="getUserConversations", methods={"GET"})
      */
-    public function getUserConversations($userId): CustomJsonResponse
+    public function getUserConversations(Request $request): CustomJsonResponse
     {
+        $userId = $request->get('userId');
         $user = $this->em->getRepository(User::class)->find($userId);
-
+        $page = $request->query->getInt('page', 1);
+        $limit = $request->query->getInt('limit', 10);
         if (!$user) {
             return new CustomJsonResponse(null, 404, 'Utilisateur non trouvé');
         }
@@ -265,22 +334,62 @@ class ConversationUserController extends AbstractController
         $conversations = array_merge($conversationsAsFirst, $conversationsAsSecond);
 
         $conversationsData = [];
-        foreach ($conversations as $conversation) {
+
+
+        $offset = ($page - 1) * $limit;
+        $paginatedConversations = array_slice($conversations, $offset, $limit);
+
+
+
+
+
+        foreach ($paginatedConversations as $conversation) {
             $otherUser = $conversation->getFirst()->getId() === $user->getId()
                 ? $conversation->getSecond()
                 : $conversation->getFirst();
+            $existingFollow = $this->em->getRepository(Follow::class)->findOneBy([
+                'follower' => $user,
+                'following' => $otherUser
+            ]) ??
+                $this->em->getRepository(Follow::class)->findOneBy([
+                    'follower' => $otherUser,
+                    'following' => $user
+                ]);
+            if ($existingFollow) {
 
+
+                $contact = [
+                    'id' => $otherUser->getId(),
+                    'username' => $existingFollow->getNameContact(),
+                    'nameContact' => $existingFollow->getNameContact(),
+                    'surnameContact' => $existingFollow->getSurnameContact(),
+                    'phone' => $otherUser->getPhone(),
+                    'codePhone' => $otherUser->getCodePhone()
+                ];
+            } else {
+                $contact = [
+                    'id' => $otherUser->getId(),
+                    'username' => $otherUser->getNameUser(),
+                    'nameContact' => $otherUser->getNameUser(),
+                    'surnameContact' => "",
+                    'phone' => $otherUser->getPhone(),
+                    'codePhone' => $otherUser->getCodePhone()
+                ];
+            }
             $conversationsData[] = [
                 'id' => $conversation->getId(),
-                'otherUser' => [
-                    'id' => $otherUser->getId(),
-                    'username' => $otherUser->getUsername()
-                ],
+                'otherUser' => $contact,
                 'lastMessage' => $this->getLastMessage($conversation)
             ];
-        }
 
-        return new CustomJsonResponse($conversationsData, 200, 'Conversations récupérées avec succès');
+            $paginatedResults = [
+                'total' => count($conversations),
+                'page' => $page,
+                'data' => $conversationsData
+            ];
+
+            return new CustomJsonResponse($paginatedResults, 200, 'Conversations récupérées avec succès');
+        }
     }
 
     private function getLastMessage(ConversationUser $conversation): ?array

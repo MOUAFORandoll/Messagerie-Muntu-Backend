@@ -3,8 +3,7 @@
 namespace App\EventListener;
 
 use App\Entity\Communication;
-use App\Entity\User;
-use App\Entity\UserPlateform;
+use App\Entity\User; 
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Event\JWTCreatedEvent;
 use Lexik\Bundle\JWTAuthenticationBundle\Event\JWTAuthenticatedEvent;
@@ -30,7 +29,7 @@ class JWTListener implements EventSubscriberInterface
         /** @var User $user */
         $user = $event->getUser();
 
-        // $communication = $em->getRepository(Communication::class)->findOneBy(['client' => $user]);
+     
         $payload = $event->getData();
         $payload['id'] = $user->getId();
         $payload['username'] = $user->getUsername();

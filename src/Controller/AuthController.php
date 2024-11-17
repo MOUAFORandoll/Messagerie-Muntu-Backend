@@ -39,8 +39,7 @@ class AuthController extends AbstractController
     private $jwtRefresh;
     private $validator;
     private $myFunction;
-    private $paginator;
-    private $transactionFunction;
+    private $paginator; 
     public function __construct(
         SerializerInterface $serializer,
         EntityManagerInterface $em,
@@ -53,14 +52,12 @@ class AuthController extends AbstractController
         ValidatorInterface
         $validator,
         MyFunction
-        $myFunction,
-        TransactionFunction  $transactionFunction,
+        $myFunction, 
 
     ) {
         $this->em = $em;
         $this->serializer = $serializer;
-        $this->myFunction = $myFunction;
-        $this->transactionFunction = $transactionFunction;
+        $this->myFunction = $myFunction; 
         $this->passwordEncoder = $passwordEncoder;
         $this->user = $user;
         $this->jwt = $jwt;
@@ -165,8 +162,6 @@ class AuthController extends AbstractController
         if ($userEmail) {
             return new CustomJsonResponse(null, 203, 'Adresse email déjà utilisée');
         }
-        // $keySecret = $this->createUniqueUid();
-        // $keySecret = $this->generateKeySecret($username, $password);
 
         $user = new User();
 
@@ -358,10 +353,6 @@ class AuthController extends AbstractController
             $password = bin2hex(random_bytes(8)); // Génère un mot de passe aléatoire
             $user->setPassword($this->passwordEncoder->hashPassword($user, $password));
 
-            // $keySecret = password_hash(($data['email'] . $password . (new \DateTime())->format('Y-m-d H:i:s') . implode("", array_map(fn() => random_int(0, 9), range(1, 4)))), PASSWORD_DEFAULT);
-            $keySecret = $this->createUniqueUid();
-
-            // $user->setTypeUser($this->em->getRepository(TypeUser::class)->findOneBy(['id' => 2]));
 
             if (isset($data['isSocialFacebook'])) {
                 $user->setIsSocialFacebook($data['isSocialFacebook']);

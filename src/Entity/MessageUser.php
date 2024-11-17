@@ -41,6 +41,14 @@ class MessageUser
     #[ORM\OneToMany(mappedBy: 'message_user', targetEntity: MessageObject::class)]
     private Collection $messageObjects;
 
+
+    #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'messages')]
+    private ?self $message_target = null;
+
+    #[ORM\OneToMany(mappedBy: 'message_target', targetEntity: self::class)]
+    private Collection $messages;
+
+
     public function __construct()
     {
         $this->messageObjects = new ArrayCollection();
@@ -123,6 +131,47 @@ class MessageUser
             // set the owning side to null (unless already changed)
             if ($messageObject->getMessageUser() === $this) {
                 $messageObject->setMessageUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getMessageTarget(): ?self
+    {
+        return $this->message_target;
+    }
+    public function setMessageTarget(?self $message_target): static
+    {
+        $this->message_target = $message_target;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, self>
+     */
+    public function getMessages(): Collection
+    {
+        return $this->messages;
+    }
+
+    public function addMessage(self $message): static
+    {
+        if (!$this->messages->contains($message)) {
+            $this->messages->add($message);
+            $message->setMessageTarget($this);
+        }
+
+        return $this;
+    }
+
+    public function removeMessage(self $message): static
+    {
+        if ($this->messages->removeElement($message)) {
+            // set the owning side to null (unless already changed)
+            if ($message->getMessageTarget() === $this) {
+                $message->setMessageTarget(null);
             }
         }
 

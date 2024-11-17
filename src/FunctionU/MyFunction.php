@@ -178,12 +178,25 @@ class MyFunction
                 'receiver' => [
                     'id' => $message->getConversation()->getSecond()->getId(),
                     'username' => $message->getConversation()->getSecond()->getUsername()
-                ]
+                ],
+                'messageTarget' => $message->getMessageTarget() != null ? $this->formatMessageUser($message->getMessageTarget(),) : null,
+                'attachFile' =>  $message->getDeletedAt() != null ? [] : $this->getAttachMessageObject($message)
+
             ];
     }
 
 
-
+    public function getAttachMessageObject(MessageUser $message)
+    {
+        $objects = $message->getMessageObjects();
+        $fichiers = [];
+        foreach ($objects as $ob) {
+            $fichiers[] = [
+                'src' =>    $_ENV['BACK_END_URL'] . '/images/call_center/' . $ob->getSrc(),
+            ];
+        }
+        return $fichiers;
+    }
     function formatMessageCanal(Message  $message)
     {
         return
@@ -217,7 +230,7 @@ class MyFunction
                 ],
 
             ];
-    }    
+    }
 
 
 
@@ -239,20 +252,6 @@ class MyFunction
             [
                 'typeUser' => 1,
                 'call_center_id' => $call_center_id,
-                'data'
-                =>
-                $message
-
-            ]
-        );
-    }
-    public function emitcallCenterToUser($user, $message)
-    {
-
-        $this->Socekt_Emit(
-            "service_client",
-            [
-                'recepteur' => $user->getKeySecret(),
                 'data'
                 =>
                 $message

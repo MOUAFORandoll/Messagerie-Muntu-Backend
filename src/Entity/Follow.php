@@ -23,7 +23,7 @@ class Follow
     private ?string $nameContact = null;
 
     #[ORM\Column(length: 255)]
-    private ?string $sunameContact = null;
+    private ?string $surnameContact = null;
 
     public function getId(): ?int
     {
@@ -66,14 +66,14 @@ class Follow
         return $this;
     }
 
-    public function getSunameContact(): ?string
+    public function getSurnameContact(): ?string
     {
-        return $this->sunameContact;
+        return $this->surnameContact;
     }
 
-    public function setSunameContact(string $sunameContact): static
+    public function setSurnameContact(string $surnameContact): static
     {
-        $this->sunameContact = $sunameContact;
+        $this->surnameContact = $surnameContact;
 
         return $this;
     }

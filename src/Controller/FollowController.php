@@ -33,18 +33,18 @@ class FollowController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
         $follower = $this->myFunction->requestUser($request);
-        $nameContact = $data['nameContact'] ?? null;
-        $sunameContact = $data['sunameContact'] ?? null;
-        if (!$nameContact || !$sunameContact) {
+        $nameContact = $data['nameContact'];
+        $surnameContact = $data['surnameContact'];
+        if (!$nameContact || !$surnameContact) {
             return new CustomJsonResponse(null, 400, 'Le nom et le prénom du contact sont requis');
         }
-        $codePhoneContact = $data['codePhoneContact'] ?? null;
-        $phoneContact = $data['phoneContact'] ?? null;
+        $codePhoneContact = $data['codePhoneContact'];
+        $phoneContact = $data['phoneContact'];
         if (!$codePhoneContact || !$phoneContact) {
             return new CustomJsonResponse(null, 400, 'le numéro de téléphone du contact sont requis');
         }
 
-        $following = $this->em->getRepository(User::class)->findOneBy(['phone' => $phoneContact, 'codePhone' => $codePhoneContact]);
+        $following = $this->em->getRepository(User::class)->findOneBy(['phone' => $phoneContact]);
         if (!$following) {
             return new CustomJsonResponse(null, 203, 'L\'utilisateur à suivre n\'existe pas');
         }
@@ -59,19 +59,88 @@ class FollowController extends AbstractController
         ]);
 
         if ($existingFollow) {
-            return new CustomJsonResponse(null, 400, 'Vous suivez déjà cet utilisateur');
+            return new    CustomJsonResponse([
+                'id' => $existingFollow->getId(),
+                'username' => $existingFollow->getFollowing()->getUsername(),
+                'nameContact' => $existingFollow->getNameContact(),
+                'surnameContact' => $existingFollow->getsurnameContact(),
+                'phone' => $existingFollow->getFollowing()->getPhone(),
+                'codePhone' => "0"
+            ],  200, 'Vous suivez déjà cet utilisateur');
         }
 
         $follow = new Follow();
         $follow->setFollower($follower);
         $follow->setFollowing($following);
         $follow->setNameContact($nameContact);
-        $follow->setSunameContact($sunameContact);
+        $follow->setsurnameContact($surnameContact);
 
         $this->em->persist($follow);
         $this->em->flush();
 
-        return new CustomJsonResponse(null, 201, 'Contact ajouté avec succès');
+        return new CustomJsonResponse([
+            'id' => $follow->getId(),
+            'username' => $follow->getFollowing()->getUsername(),
+            'nameContact' => $follow->getNameContact(),
+            'surnameContact' => $follow->getsurnameContact(),
+            'phone' => $follow->getFollowing()->getPhone(),
+            'codePhone' => "0"
+        ], 201, 'Contact ajouté avec succès');
+    }
+
+    /**
+     * @Route("/update-contact", name="updateFollowContact", methods={"PUT"})
+     */
+    public function updateFollowContact(Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $follower = $this->myFunction->requestUser($request);
+        $nameContact = $data['nameContact'];
+        $surnameContact = $data['surnameContact'];
+        $idFollow = $data['idFollow'];
+        if (!$nameContact || !$surnameContact) {
+            return new CustomJsonResponse(null, 400, 'Le nom et le prénom du contact sont requis');
+        }
+
+
+
+        $existingFollow = $this->em->getRepository(Follow::class)->find($idFollow);
+
+        if (!$existingFollow) {
+            return new CustomJsonResponse(null, 404, 'Le contact à mettre à jour n\'existe pas');
+        }
+
+        $existingFollow->setNameContact($nameContact);
+        $existingFollow->setsurnameContact($surnameContact);
+
+        $this->em->flush();
+
+        return new CustomJsonResponse([
+            'id' => $existingFollow->getId(),
+            'username' => $existingFollow->getFollowing()->getUsername(),
+            'nameContact' => $existingFollow->getNameContact(),
+            'surnameContact' => $existingFollow->getsurnameContact(),
+            'phone' => $existingFollow->getFollowing()->getPhone(),
+            'codePhone' => "0"
+        ], 200, 'Contact mis à jour avec succès');
+    }
+
+
+    /**
+     * @Route("/delete-contact/{id}", name="deleteFollowContact", methods={"DELETE"})
+     */
+    public function deleteFollowContact(int $id): JsonResponse
+    {
+        $existingFollow = $this->em->getRepository(Follow::class)->find($id);
+
+        if (!$existingFollow) {
+            return new CustomJsonResponse(null, 404, 'Le contact à supprimer n\'existe pas');
+        }
+
+        $this->em->remove($existingFollow);
+        $this->em->flush();
+
+        return new CustomJsonResponse(null, 200, 'Contact supprimé avec succès');
     }
     /**
      * @Route("/follow/contacts", name="getContacts", methods={"GET"})
@@ -99,10 +168,10 @@ class FollowController extends AbstractController
 
         $formattedContacts = array_map(function ($follow) {
             return [
-                'id' => $follow->getFollowing()->getId(),
+                'id' => $follow->getId(),
                 'username' => $follow->getFollowing()->getUsername(),
                 'nameContact' => $follow->getNameContact(),
-                'sunameContact' => $follow->getSunameContact(),
+                'surnameContact' => $follow->getsurnameContact(),
                 'phone' => $follow->getFollowing()->getPhone(),
                 'codePhone' => $follow->getFollowing()->getCodePhone()
             ];
@@ -155,7 +224,7 @@ class FollowController extends AbstractController
         $follow->setFollower($follower);
         $follow->setFollowing($following);
         $follow->setNameContact($following->getUsername());
-        $follow->setSunameContact($following->getSurname());
+        $follow->setsurnameContact($following->getSurname());
         $this->em->persist($follow);
         $this->em->flush();
 

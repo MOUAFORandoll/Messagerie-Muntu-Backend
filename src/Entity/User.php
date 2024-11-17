@@ -55,7 +55,7 @@ class User implements
 
 
 
-    #[ORM\OneToMany(mappedBy: 'user_plateform', targetEntity: UserObject::class)]
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: UserObject::class)]
     private Collection $userObjects;
 
     #[ORM\OneToMany(mappedBy: 'emetteur', targetEntity: MessageUser::class)]
@@ -101,12 +101,17 @@ class User implements
     {
         return $this->id;
     }
+
+    public function getNameUser(): string
+    {
+        return (string) $this->username;
+    }
     /**
      * @deprecated since Symfony 5.3, use getUserIdentifier instead
      */
     public function getUsername(): string
     {
-        return (string) $this->username;
+        return (string) $this->id;
     }
     public function setUsername(string $username): static
     {

@@ -19,12 +19,11 @@ class InitController extends AbstractController
     private $transactionFunction;
     public function __construct(
         EntityManagerInterface $em,
-        ParameterBagInterface $params,
-        TransactionFunction $transactionFunction
+        ParameterBagInterface $params, 
 
     ) {
         $this->em = $em;
-        $this->transactionFunction = $transactionFunction;
+    
         $this->publicDirectory = $params->get('kernel.project_dir') . '/public';
     }
 

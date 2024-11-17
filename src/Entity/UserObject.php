@@ -23,7 +23,7 @@ class UserObject
     private ?string $src = null;
 
     #[ORM\ManyToOne(inversedBy: 'userObjects')]
-    private ?User $user_plateform = null;
+    private ?User $user = null;
 
 
     public function getId(): ?int
@@ -46,12 +46,12 @@ class UserObject
 
     public function getUser(): ?User
     {
-        return $this->user_plateform;
+        return $this->user;
     }
 
-    public function setUser(?User $user_plateform): static
+    public function setUser(?User $user): static
     {
-        $this->user_plateform = $user_plateform;
+        $this->user = $user;
 
         return $this;
     }
