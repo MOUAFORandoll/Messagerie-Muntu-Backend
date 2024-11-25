@@ -46,11 +46,11 @@ class CanalController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
 
-        if (!isset($data['libelle']) || !isset($data['description']) || !isset($data['userId'])) {
+        if (!isset($data['libelle']) || !isset($data['description'])) {
             return new CustomJsonResponse(null, 400, 'Données manquantes');
         }
 
-        $user = $this->em->getRepository(User::class)->find($data['userId']);
+        $user = $this->myFunction->requestUser($request);
         if (!$user) {
             return new CustomJsonResponse(null, 404, 'Utilisateur non trouvé');
         }
